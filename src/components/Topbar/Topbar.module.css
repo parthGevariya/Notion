@@ -1,0 +1,117 @@
+.topbar {
+    height: var(--topbar-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    border-bottom: 1px solid transparent;
+    position: sticky;
+    top: 0;
+    background: var(--bg-primary);
+    z-index: 50;
+    transition: border-color 0.2s;
+}
+
+.topbar.scrolled {
+    border-bottom-color: var(--border-light);
+}
+
+.topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Breadcrumbs */
+.breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    min-width: 0;
+}
+
+.breadcrumb-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    white-space: nowrap;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.breadcrumb-item:hover {
+    background: var(--bg-hover);
+}
+
+.breadcrumb-separator {
+    color: var(--text-tertiary);
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.breadcrumb-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+/* Topbar buttons */
+.topbar-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    color: var(--text-secondary);
+    transition: background 0.1s;
+}
+
+.topbar-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.topbar-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.topbar-btn.share {
+    background: var(--accent-blue);
+    color: white;
+    font-weight: 500;
+    padding: 4px 12px;
+}
+
+.topbar-btn.share:hover {
+    background: #1a73d4;
+}
+
+.sidebar-open-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    margin-right: 4px;
+}
+
+.sidebar-open-btn:hover {
+    background: var(--bg-hover);
+}

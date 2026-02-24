@@ -1,0 +1,245 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ==================== AUTH & USERS ====================
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  avatar       String?
+  role         String   @default("content_writer") // owner, manager, content_writer, shooter, editor, posting
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  workspaces       WorkspaceMember[]
+  createdPages     Page[]            @relation("PageCreator")
+  favorites        Favorite[]
+  assignedReminders Reminder[]       @relation("ReminderAssignee")
+  createdReminders  Reminder[]       @relation("ReminderCreator")
+  sentMessages     ChatMessage[]     @relation("MessageSender")
+  receivedMessages ChatMessage[]     @relation("MessageReceiver")
+  activityLogs     ActivityLog[]
+  comments         Comment[]
+  sessions         Session[]
+  accounts         Account[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+// ==================== WORKSPACE ====================
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  icon      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members   WorkspaceMember[]
+  pages     Page[]
+  databases Database[]
+}
+
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        String   @default("content_writer")
+  joinedAt    DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+}
+
+// ==================== PAGES & BLOCKS ====================
+
+model Page {
+  id              String   @id @default(cuid())
+  title           String   @default("Untitled")
+  icon            String?
+  coverImage      String?
+  content         String?  // JSON - TipTap document content
+  parentId        String?  // Self-relation for nested pages
+  workspaceId     String
+  createdById     String
+  isTemplate      Boolean  @default(false)
+  isTrashed       Boolean  @default(false)
+  shareToken      String?  @unique
+  sharePermission String?  // "view" | "edit" | null
+  position        Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  parent    Page?  @relation("PageHierarchy", fields: [parentId], references: [id])
+  children  Page[] @relation("PageHierarchy")
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User      @relation("PageCreator", fields: [createdById], references: [id])
+  favorites Favorite[]
+  databases Database[]
+  comments  Comment[]
+  activityLogs ActivityLog[]
+  scripts   Script[]
+}
+
+// ==================== SCRIPTS (per-client scripting) ====================
+
+model Script {
+  id           String   @id @default(cuid())
+  pageId       String
+  scriptNumber Int
+  title        String   @default("")
+  reelLink     String?
+  content      String?  // Rich text content (TipTap JSON)
+  status       String   @default("draft") // draft, shoot_pending, shoot_done, editing, approved, posted
+  assigneeId   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  page     Page  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([pageId, scriptNumber])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  pageId    String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, pageId])
+}
+
+// ==================== DATABASES (Notion-style) ====================
+
+model Database {
+  id          String   @id @default(cuid())
+  title       String   @default("Untitled Database")
+  icon        String?
+  pageId      String?
+  workspaceId String
+  schema      String   // JSON - column definitions [{id, name, type, options}]
+  viewConfig  String?  // JSON - view configs (table/kanban/calendar/gallery)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  page      Page?      @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  workspace Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  rows      DatabaseRow[]
+}
+
+model DatabaseRow {
+  id         String   @id @default(cuid())
+  databaseId String
+  properties String   // JSON - {columnId: value}
+  position   Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  database Database @relation(fields: [databaseId], references: [id], onDelete: Cascade)
+}
+
+// ==================== REMINDERS ====================
+
+model Reminder {
+  id           String    @id @default(cuid())
+  title        String
+  details      String?
+  assigneeId   String
+  creatorId    String
+  endDate      DateTime
+  reminderSent Boolean   @default(false)
+  halfTimeSent Boolean   @default(false)
+  status       String    @default("pending") // pending, in_progress, completed, overdue
+  parentId     String?   // For re-assignment chain
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  completedAt  DateTime?
+
+  assignee  User       @relation("ReminderAssignee", fields: [assigneeId], references: [id])
+  creator   User       @relation("ReminderCreator", fields: [creatorId], references: [id])
+  parent    Reminder?  @relation("ReminderChain", fields: [parentId], references: [id])
+  children  Reminder[] @relation("ReminderChain")
+}
+
+// ==================== INTERNAL CHAT ====================
+
+model ChatMessage {
+  id         String   @id @default(cuid())
+  content    String?
+  mediaUrl   String?  // For images/videos
+  mediaType  String?  // "image" | "video" | "file"
+  senderId   String
+  receiverId String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  sender   User @relation("MessageSender", fields: [senderId], references: [id])
+  receiver User @relation("MessageReceiver", fields: [receiverId], references: [id])
+}
+
+// ==================== COMMENTS & ACTIVITY ====================
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  pageId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  action    String   // "created", "edited", "deleted", "shared", "assigned"
+  userId    String
+  pageId    String?
+  metadata  String?  // JSON
+  createdAt DateTime @default(now())
+
+  user User  @relation(fields: [userId], references: [id])
+  page Page? @relation(fields: [pageId], references: [id], onDelete: SetNull)
+}

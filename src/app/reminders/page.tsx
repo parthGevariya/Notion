@@ -1,0 +1,257 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { Plus, Trash2, Clock, User, CalendarDays, Bell } from 'lucide-react';
+import Sidebar from '@/components/Sidebar/Sidebar';
+import Topbar from '@/components/Topbar/Topbar';
+import './reminders.css';
+
+interface ReminderUser {
+    id: string;
+    name: string;
+    avatar: string | null;
+}
+
+interface Reminder {
+    id: string;
+    title: string;
+    details: string | null;
+    assignee: ReminderUser;
+    creator: ReminderUser;
+    endDate: string;
+    status: string;
+    completedAt: string | null;
+    parentId: string | null;
+}
+
+const STATUS_LABELS: Record<string, string> = {
+    pending: 'Pending',
+    in_progress: 'In Progress',
+    completed: 'Completed',
+    overdue: 'Overdue',
+};
+
+export default function RemindersPage() {
+    const { data: session, status: authStatus } = useSession();
+    const router = useRouter();
+    const [reminders, setReminders] = useState<Reminder[]>([]);
+    const [filter, setFilter] = useState('all');
+    const [showForm, setShowForm] = useState(false);
+    const [users, setUsers] = useState<ReminderUser[]>([]);
+
+    // Form state
+    const [formTitle, setFormTitle] = useState('');
+    const [formDetails, setFormDetails] = useState('');
+    const [formAssignee, setFormAssignee] = useState('');
+    const [formEndDate, setFormEndDate] = useState('');
+
+    useEffect(() => {
+        if (authStatus === 'unauthenticated') router.push('/login');
+    }, [authStatus, router]);
+
+    // Fetch reminders
+    const fetchReminders = useCallback(async () => {
+        const res = await fetch(`/api/reminders?filter=${filter}`);
+        if (res.ok) setReminders(await res.json());
+    }, [filter]);
+
+    useEffect(() => { fetchReminders(); }, [fetchReminders]);
+
+    // Fetch users for assignee dropdown
+    useEffect(() => {
+        fetch('/api/users')
+            .then(r => r.ok ? r.json() : [])
+            .then(setUsers)
+            .catch(() => { });
+    }, []);
+
+    const handleCreate = async () => {
+        if (!formTitle || !formAssignee || !formEndDate) return;
+
+        const res = await fetch('/api/reminders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: formTitle,
+                details: formDetails || null,
+                assigneeId: formAssignee,
+                endDate: formEndDate,
+            }),
+        });
+
+        if (res.ok) {
+            const reminder = await res.json();
+            setReminders(prev => [reminder, ...prev]);
+            setFormTitle(''); setFormDetails(''); setFormAssignee(''); setFormEndDate('');
+            setShowForm(false);
+        }
+    };
+
+    const handleStatusToggle = async (id: string, currentStatus: string) => {
+        const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
+        setReminders(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
+        await fetch(`/api/reminders/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus }),
+        });
+    };
+
+    const handleDelete = async (id: string) => {
+        setReminders(prev => prev.filter(r => r.id !== id));
+        await fetch(`/api/reminders/${id}`, { method: 'DELETE' });
+    };
+
+    const isOverdue = (r: Reminder) =>
+        r.status !== 'completed' && new Date(r.endDate) < new Date();
+
+    const formatDate = (d: string) => {
+        const date = new Date(d);
+        return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    };
+
+    const getTimeRemaining = (endDate: string) => {
+        const diff = new Date(endDate).getTime() - Date.now();
+        if (diff < 0) return 'Overdue';
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const days = Math.floor(hours / 24);
+        if (days > 0) return `${days}d ${hours % 24}h left`;
+        return `${hours}h left`;
+    };
+
+    if (authStatus === 'loading') {
+        return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--text-secondary)' }}>Loading...</div>;
+    }
+
+    if (!session) return null;
+
+    return (
+        <div style={{ display: 'flex', minHeight: '100vh' }}>
+            <Sidebar />
+            <div style={{ flex: 1, marginLeft: 'var(--sidebar-width)', minHeight: '100vh' }}>
+                <div className="reminders-page">
+                    {/* Header */}
+                    <div className="reminders-header">
+                        <div className="reminders-title">
+                            <Bell size={24} /> Reminders
+                        </div>
+                        <button
+                            className="reminder-form-btn"
+                            onClick={() => setShowForm(!showForm)}
+                        >
+                            <Plus size={14} style={{ marginRight: 4 }} /> New Reminder
+                        </button>
+                    </div>
+
+                    {/* Create Form */}
+                    {showForm && (
+                        <div className="reminder-form">
+                            <div className="reminder-form-row">
+                                <input
+                                    className="reminder-form-input"
+                                    value={formTitle}
+                                    onChange={e => setFormTitle(e.target.value)}
+                                    placeholder="Reminder title..."
+                                />
+                            </div>
+                            <div className="reminder-form-row">
+                                <input
+                                    className="reminder-form-input"
+                                    value={formDetails}
+                                    onChange={e => setFormDetails(e.target.value)}
+                                    placeholder="Details (optional)..."
+                                />
+                            </div>
+                            <div className="reminder-form-row">
+                                <select
+                                    className="reminder-form-select"
+                                    value={formAssignee}
+                                    onChange={e => setFormAssignee(e.target.value)}
+                                >
+                                    <option value="">Assign to...</option>
+                                    {users.map(u => (
+                                        <option key={u.id} value={u.id}>{u.name}</option>
+                                    ))}
+                                </select>
+                                <input
+                                    type="datetime-local"
+                                    className="reminder-form-input"
+                                    value={formEndDate}
+                                    onChange={e => setFormEndDate(e.target.value)}
+                                />
+                                <button className="reminder-form-btn" onClick={handleCreate}>
+                                    Create
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Filter tabs */}
+                    <div className="reminders-filters">
+                        {['all', 'assigned', 'created'].map(f => (
+                            <button
+                                key={f}
+                                className={`reminder-filter-tab ${filter === f ? 'active' : ''}`}
+                                onClick={() => setFilter(f)}
+                            >
+                                {f === 'all' ? 'All' : f === 'assigned' ? 'Assigned to Me' : 'Created by Me'}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Reminder list */}
+                    {reminders.length === 0 ? (
+                        <div className="reminders-empty">
+                            No reminders yet. Click "New Reminder" to create one.
+                        </div>
+                    ) : (
+                        <div className="reminder-list">
+                            {reminders.map(r => (
+                                <div
+                                    key={r.id}
+                                    className={`reminder-card ${r.status === 'completed' ? 'completed' : ''} ${isOverdue(r) ? 'overdue' : ''}`}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        className="reminder-checkbox"
+                                        checked={r.status === 'completed'}
+                                        onChange={() => handleStatusToggle(r.id, r.status)}
+                                    />
+                                    <div className="reminder-content">
+                                        <div className="reminder-card-title" style={{ textDecoration: r.status === 'completed' ? 'line-through' : 'none' }}>
+                                            {r.title}
+                                        </div>
+                                        {r.details && (
+                                            <div className="reminder-card-details">{r.details}</div>
+                                        )}
+                                        <div className="reminder-card-meta">
+                                            <span className={`reminder-status-badge reminder-status-${isOverdue(r) ? 'overdue' : r.status}`}>
+                                                {isOverdue(r) ? 'Overdue' : STATUS_LABELS[r.status] || r.status}
+                                            </span>
+                                            <span className="reminder-card-meta-item">
+                                                <CalendarDays size={12} /> {formatDate(r.endDate)}
+                                            </span>
+                                            <span className="reminder-card-meta-item">
+                                                <Clock size={12} /> {getTimeRemaining(r.endDate)}
+                                            </span>
+                                            <span className="reminder-card-meta-item">
+                                                <User size={12} />
+                                                <span className="reminder-user-avatar">{r.assignee.name.charAt(0)}</span>
+                                                {r.assignee.name}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <button className="reminder-delete-btn" onClick={() => handleDelete(r.id)} title="Delete">
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}

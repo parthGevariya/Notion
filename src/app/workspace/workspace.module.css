@@ -1,0 +1,185 @@
+.workspace-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.workspace-main {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    min-height: 100vh;
+    transition: margin-left 0.2s ease;
+}
+
+.workspace-main.full-width {
+    margin-left: 0;
+}
+
+/* Page editor area */
+.page-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 96px 30vh;
+    width: 100%;
+}
+
+@media (max-width: 1100px) {
+    .page-container {
+        padding: 0 48px 30vh;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-container {
+        padding: 0 24px 30vh;
+    }
+}
+
+/* Page cover image */
+.page-cover {
+    width: 100%;
+    height: 280px;
+    position: relative;
+    overflow: hidden;
+}
+
+.page-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.page-cover-overlay {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.page-cover:hover .page-cover-overlay {
+    opacity: 1;
+}
+
+/* Page header (icon + title) */
+.page-header {
+    padding-top: 30px;
+    margin-bottom: 4px;
+}
+
+.page-icon-wrapper {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 8px;
+}
+
+.page-icon {
+    font-size: 72px;
+    line-height: 1;
+    cursor: pointer;
+    transition: opacity 0.1s;
+}
+
+.page-icon:hover {
+    opacity: 0.8;
+}
+
+.page-title {
+    font-size: 40px;
+    font-weight: 700;
+    line-height: 1.2;
+    border: none;
+    outline: none;
+    width: 100%;
+    background: transparent;
+    color: var(--text-primary);
+    padding: 0;
+    resize: none;
+    font-family: var(--font-sans);
+}
+
+.page-title::placeholder {
+    color: var(--text-tertiary);
+}
+
+/* Page controls row (add icon / cover / comment) */
+.page-controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.page-header:hover .page-controls {
+    opacity: 1;
+}
+
+.page-control-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    color: var(--text-tertiary);
+    cursor: pointer;
+}
+
+.page-control-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+}
+
+.page-control-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Empty page state */
+.empty-workspace {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: calc(100vh - var(--topbar-height));
+    gap: 16px;
+    color: var(--text-secondary);
+}
+
+.empty-workspace-icon {
+    font-size: 64px;
+    opacity: 0.6;
+}
+
+.empty-workspace h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.empty-workspace p {
+    font-size: 14px;
+    max-width: 360px;
+    text-align: center;
+    line-height: 1.6;
+}
+
+.empty-workspace-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 20px;
+    background: var(--accent-blue);
+    color: white;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 8px;
+    transition: background 0.1s;
+}
+
+.empty-workspace-btn:hover {
+    background: #1a73d4;
+}
