@@ -152,9 +152,9 @@ export default function ChatPage() {
 
                         {showNewChat && (
                             <div className="chat-user-picker">
-                                <select onChange={e => { if (e.target.value) startNewChat(e.target.value); }} defaultValue="">
-                                    <option value="" disabled>Select a user...</option>
-                                    {allUsers.filter(u => u.id !== userId).map(u => (
+                                <select onChange={e => { if (e.target.value) startNewChat(e.target.value); }} defaultValue="" style={{ width: '100%', padding: '8px', marginBottom: '16px', borderRadius: '4px', border: '1px solid var(--divider)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+                                    <option value="" disabled>Select a user to chat...</option>
+                                    {allUsers?.filter(u => u.id !== userId)?.map(u => (
                                         <option key={u.id} value={u.id}>{u.name} ({ROLE_LABELS[u.role as Role] || u.role})</option>
                                     ))}
                                 </select>

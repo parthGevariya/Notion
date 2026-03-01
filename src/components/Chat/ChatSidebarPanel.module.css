@@ -1,0 +1,256 @@
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(15, 15, 15, 0.4);
+    z-index: 9999;
+    backdrop-filter: blur(2px);
+    transition: opacity 0.3s ease;
+}
+
+.panel {
+    position: fixed;
+    top: 0;
+    right: -400px;
+    bottom: 0;
+    width: 380px;
+    background-color: var(--bg-primary, #ffffff);
+    border-left: 1px solid var(--divider, #e8e8e8);
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.1);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.panel.open {
+    right: 0;
+}
+
+.floatingBtn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: var(--primary-color, #2383e2);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(35, 131, 226, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 9998;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.floatingBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(35, 131, 226, 0.4);
+}
+
+.floatingBtn.hidden {
+    display: none;
+}
+
+.badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background-color: #e03131;
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    height: 20px;
+    min-width: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--bg-primary, #ffffff);
+}
+
+.header {
+    height: 60px;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--divider, #e8e8e8);
+    flex-shrink: 0;
+}
+
+.title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary, #111);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.closeBtn,
+.backBtn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary, #666);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.closeBtn:hover,
+.backBtn:hover {
+    background-color: var(--bg-hover, #f1f1f1);
+    color: var(--text-primary, #111);
+}
+
+.content {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.tabBar {
+    display: flex;
+    border-bottom: 1px solid var(--divider, #e8e8e8);
+}
+
+.tab {
+    flex: 1;
+    padding: 12px 0;
+    text-align: center;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-secondary, #666);
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tab.active {
+    color: var(--text-primary, #111);
+    border-bottom-color: var(--primary-color, #2383e2);
+}
+
+.chatList {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.chatItem {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--divider, #f1f1f1);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.chatItem:hover {
+    background-color: var(--bg-hover, #f9f9f9);
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--primary-color, #2383e2);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 16px;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.groupAvatar {
+    background-color: #6a2aab;
+}
+
+.itemInfo {
+    flex: 1;
+    min-width: 0;
+}
+
+.itemTitle {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary, #111);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.itemPreview {
+    font-size: 13px;
+    color: var(--text-secondary, #666);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Mention badge on floating button (shows '@') ── */
+.mentionBadge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background-color: var(--primary-color, #2383e2);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    height: 20px;
+    min-width: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--bg-primary, #ffffff);
+}
+
+/* ── Tab badges ──────────────────────────────────────────────────────── */
+.tabBadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: #ef4444;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    margin-left: 6px;
+}
+
+.tabMentionBadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--primary-color, #2383e2);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    margin-left: 6px;
+}

@@ -7,17 +7,16 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function getDbPath(): string {
-  // Strip the 'file:' prefix from DATABASE_URL if present
   const envUrl = process.env.DATABASE_URL || '';
   if (envUrl.startsWith('file:')) {
-    const stripped = envUrl.slice(5);
-    // If it's already absolute, use it directly
+    let stripped = envUrl.slice(5);
+    // Relative paths in .env are usually meant to be resolved against the project root
     if (path.isAbsolute(stripped)) return stripped;
-    // Otherwise resolve relative to CWD
+
+    // If it's ../dev.db (because we fixed .env for the CLI), just put it in root
     return path.resolve(process.cwd(), stripped);
   }
-  // Default: prisma/dev.db relative to project root
-  return path.resolve(process.cwd(), 'prisma', 'dev.db');
+  return path.resolve(process.cwd(), 'dev.db');
 }
 
 function createPrismaClient() {
@@ -28,6 +27,8 @@ function createPrismaClient() {
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
+}
 
 export default prisma;

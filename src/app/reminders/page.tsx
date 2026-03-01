@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Plus, Trash2, Clock, User, CalendarDays, Bell } from 'lucide-react';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import Topbar from '@/components/Topbar/Topbar';
+import TaskDetailModal from '@/components/Topbar/TaskDetailModal';
 import './reminders.css';
 
 interface ReminderUser {
@@ -40,6 +41,7 @@ export default function RemindersPage() {
     const [filter, setFilter] = useState('all');
     const [showForm, setShowForm] = useState(false);
     const [users, setUsers] = useState<ReminderUser[]>([]);
+    const [selectedTask, setSelectedTask] = useState<Reminder | null>(null);
 
     // Form state
     const [formTitle, setFormTitle] = useState('');
@@ -90,13 +92,7 @@ export default function RemindersPage() {
     };
 
     const handleStatusToggle = async (id: string, currentStatus: string) => {
-        const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
-        setReminders(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
-        await fetch(`/api/reminders/${id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus }),
-        });
+        // Obsolete function, replaced by TaskDetailModal
     };
 
     const handleDelete = async (id: string) => {
@@ -157,11 +153,13 @@ export default function RemindersPage() {
                                 />
                             </div>
                             <div className="reminder-form-row">
-                                <input
+                                <textarea
                                     className="reminder-form-input"
                                     value={formDetails}
                                     onChange={e => setFormDetails(e.target.value)}
-                                    placeholder="Details (optional)..."
+                                    placeholder="Details / Description (optional)..."
+                                    rows={3}
+                                    style={{ resize: 'vertical' }}
                                 />
                             </div>
                             <div className="reminder-form-row">
@@ -212,13 +210,9 @@ export default function RemindersPage() {
                                 <div
                                     key={r.id}
                                     className={`reminder-card ${r.status === 'completed' ? 'completed' : ''} ${isOverdue(r) ? 'overdue' : ''}`}
+                                    onClick={() => setSelectedTask(r)}
+                                    style={{ cursor: 'pointer' }}
                                 >
-                                    <input
-                                        type="checkbox"
-                                        className="reminder-checkbox"
-                                        checked={r.status === 'completed'}
-                                        onChange={() => handleStatusToggle(r.id, r.status)}
-                                    />
                                     <div className="reminder-content">
                                         <div className="reminder-card-title" style={{ textDecoration: r.status === 'completed' ? 'line-through' : 'none' }}>
                                             {r.title}
@@ -243,7 +237,11 @@ export default function RemindersPage() {
                                             </span>
                                         </div>
                                     </div>
-                                    <button className="reminder-delete-btn" onClick={() => handleDelete(r.id)} title="Delete">
+                                    <button
+                                        className="reminder-delete-btn"
+                                        onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }}
+                                        title="Delete"
+                                    >
                                         <Trash2 size={14} />
                                     </button>
                                 </div>
@@ -252,6 +250,18 @@ export default function RemindersPage() {
                     )}
                 </div>
             </div>
+
+            {selectedTask && (
+                <TaskDetailModal
+                    task={selectedTask}
+                    currentUserId={(session?.user as any).id}
+                    onClose={() => setSelectedTask(null)}
+                    onUpdate={(updated) => {
+                        setReminders(prev => prev.map(r => r.id === updated.id ? updated : r));
+                        setSelectedTask(null);
+                    }}
+                />
+            )}
         </div>
     );
 }

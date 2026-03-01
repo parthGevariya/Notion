@@ -6,6 +6,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { Smile, Image, MessageSquare } from 'lucide-react';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import Topbar from '@/components/Topbar/Topbar';
+import PageLoadingSkeleton from '@/components/Skeleton/PageLoadingSkeleton';
 import dynamic from 'next/dynamic';
 
 const BlockEditor = dynamic(() => import('@/components/Editor/BlockEditor'), {
@@ -21,6 +22,16 @@ const InlineDatabaseBlock = dynamic(() => import('@/components/Database/InlineDa
 const ScriptPanel = dynamic(() => import('@/components/Scripts/ScriptPanel'), {
     ssr: false,
     loading: () => <p style={{ color: 'var(--text-tertiary)', fontSize: '14px' }}>Loading scripts...</p>,
+});
+
+const ScriptPageView = dynamic(() => import('@/components/Scripts/ScriptPageView'), {
+    ssr: false,
+    loading: () => <p style={{ color: 'var(--text-tertiary)', fontSize: '14px' }}>Loading script page...</p>,
+});
+
+const ClientCalendarView = dynamic(() => import('@/components/Calendar/ClientCalendarView'), {
+    ssr: false,
+    loading: () => <p style={{ color: 'var(--text-tertiary)', fontSize: '14px' }}>Loading calendar...</p>,
 });
 
 const CollabProvider = dynamic(
@@ -40,6 +51,9 @@ interface PageData {
     coverImage: string | null;
     content: string | null;
     parentId: string | null;
+    pageType: string; // 'general' | 'script_page' | 'calendar_page'
+    clientId: string | null;
+    client?: { id: string; name: string; emoji: string | null } | null;
     children: { id: string; title: string; icon: string | null }[];
     createdBy: { id: string; name: string; avatar: string | null };
 }
@@ -167,18 +181,41 @@ export default function PageView() {
     };
 
     if (status === 'loading' || loading) {
-        return (
-            <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                height: '100vh', color: 'var(--text-secondary)', fontSize: '14px',
-            }}>
-                Loading...
-            </div>
-        );
+        return <PageLoadingSkeleton />;
     }
 
     if (!session || !page) return null;
 
+    // ── Script page type: renders ScriptPageView instead of standard editor ──
+    if (page.pageType === 'script_page') {
+        return (
+            <div style={{ display: 'flex', minHeight: '100vh' }}>
+                <Sidebar />
+                <div style={{ flex: 1, marginLeft: 'var(--sidebar-width)', minHeight: '100vh' }}>
+                    <Topbar page={page} />
+                    <ScriptPageView
+                        pageId={pageId}
+                        clientName={page.client?.name}
+                    />
+                </div>
+            </div>
+        );
+    }
+
+    // ── Calendar page type: renders ClientCalendarView instead of standard editor ──
+    if (page.pageType === 'calendar_page') {
+        return (
+            <div style={{ display: 'flex', minHeight: '100vh' }}>
+                <Sidebar />
+                <div style={{ flex: 1, marginLeft: 'var(--sidebar-width)', minHeight: '100vh', background: 'var(--bg-primary)' }}>
+                    <Topbar page={page} />
+                    <ClientCalendarView pageId={pageId} />
+                </div>
+            </div>
+        );
+    }
+
+    // ── Standard general page ──────────────────────────────────────────────
     return (
         <CollabProvider pageId={pageId}>
             <div style={{ display: 'flex', minHeight: '100vh' }}>

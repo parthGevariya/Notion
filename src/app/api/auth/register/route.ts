@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
         // First user becomes owner
         const userCount = await prisma.user.count();
-        const role = userCount === 0 ? ROLES.OWNER : ROLES.CONTENT_WRITER;
+        const role = userCount === 0 ? ROLES.OWNER : ROLES.VIEWER;
 
         const passwordHash = await hash(password, 12);
 

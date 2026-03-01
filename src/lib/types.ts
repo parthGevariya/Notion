@@ -6,6 +6,7 @@ export const ROLES = {
     SHOOTER: 'shooter',
     EDITOR: 'editor',
     POSTING: 'posting',
+    VIEWER: 'viewer',
 } as const;
 
 export type Role = typeof ROLES[keyof typeof ROLES];
@@ -18,15 +19,17 @@ export const ROLE_LEVELS: Record<Role, number> = {
     shooter: 50,
     editor: 50,
     posting: 50,
+    viewer: 10,
 };
 
 export const ROLE_LABELS: Record<Role, string> = {
-    owner: 'Owner',
+    owner: 'Owner / CEO',
     manager: 'Manager',
     content_writer: 'Content Writer',
     shooter: 'Shooter',
     editor: 'Editor',
     posting: 'Posting',
+    viewer: 'Viewer',
 };
 
 export function hasPermission(userRole: Role, requiredLevel: number): boolean {
