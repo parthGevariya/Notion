@@ -31,6 +31,9 @@ model User {
   comments         Comment[]
   sessions         Session[]
   accounts         Account[]
+  calendarRows     CalendarRow[]     @relation("RowAssignee")
+  cooldown         UserCooldown?
+  notifications    Notification[]    @relation("UserNotifications")
 }
 
 model Session {
@@ -73,6 +76,7 @@ model Workspace {
   members   WorkspaceMember[]
   pages     Page[]
   databases Database[]
+  clients   Client[]
 }
 
 model WorkspaceMember {
@@ -104,6 +108,8 @@ model Page {
   shareToken      String?  @unique
   sharePermission String?  // "view" | "edit" | null
   position        Int      @default(0)
+  pageType        String   @default("general") // "general" | "script_page" | "calendar_page"
+  clientId        String?  // Links page to a specific Client
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -117,6 +123,8 @@ model Page {
   comments  Comment[]
   activityLogs ActivityLog[]
   scripts   Script[]
+  client    Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  calendarRows CalendarRow[]
 }
 
 // ==================== SCRIPTS (per-client scripting) ====================
@@ -127,13 +135,16 @@ model Script {
   scriptNumber Int
   title        String   @default("")
   reelLink     String?
-  content      String?  // Rich text content (TipTap JSON)
+  content      String?  // Rich text content (plain text for script page)
   status       String   @default("draft") // draft, shoot_pending, shoot_done, editing, approved, posted
   assigneeId   String?
+  googleDocId  String?  // Google Doc ID for sync (TODO: activate with API key)
+  lastSyncedAt DateTime? // Timestamp of last successful Google Doc sync
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  page     Page  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  page         Page    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  calendarRows CalendarRow[]
 
   @@unique([pageId, scriptNumber])
 }
@@ -149,6 +160,51 @@ model Favorite {
   page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
 
   @@unique([userId, pageId])
+}
+
+// ==================== CLIENTS (per-client script & calendar pages) ====================
+
+model Client {
+  id               String   @id @default(cuid())
+  name             String
+  emoji            String?  @default("🏢") // Display icon for client
+  googleDocId      String?  // TODO: Google Doc ID for script sync (fill after API key)
+  driveFolder      String?  // TODO: Google Drive folder ID for video uploads (fill after API key)
+  workspaceId      String
+  createPermission String   @default("manager") // "manager" | "all" — which roles can add clients
+  settings         String?  // JSON: { columnVisibility: { [role]: [colId, ...] } }
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  pages     Page[]    // script_page and calendar_page linked to this client
+
+  @@index([workspaceId])
+}
+
+// ==================== CALENDAR (per-client tracker) ====================
+
+model CalendarRow {
+  id           String    @id @default(cuid())
+  pageId       String
+  date         DateTime?
+  title        String    @default("")
+  scriptId     String?
+  caption      String?
+  thumbnail    String?
+  status       String    @default("idea") // idea, scripted, shooting, editing, ready, posted
+  assigneeId   String?
+  driveLink    String?
+  socialMedia  String?
+  position     Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  page     Page    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  script   Script? @relation(fields: [scriptId], references: [id], onDelete: SetNull)
+  assignee User?   @relation("RowAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@index([pageId])
 }
 
 // ==================== DATABASES (Notion-style) ====================
@@ -185,13 +241,22 @@ model DatabaseRow {
 model Reminder {
   id           String    @id @default(cuid())
   title        String
+  description  String?
   details      String?
   assigneeId   String
   creatorId    String
   endDate      DateTime
+  
   reminderSent Boolean   @default(false)
   halfTimeSent Boolean   @default(false)
-  status       String    @default("pending") // pending, in_progress, completed, overdue
+  
+  notif1Sent   Boolean   @default(false) // Triggered at X hours remaining
+  notif2Sent   Boolean   @default(false) // Triggered at Y hours remaining
+  notif3Sent   Boolean   @default(false) // Triggered at deadline
+
+  status       String    @default("pending") // pending, in_progress, in_review, completed, overdue
+  reviewStatus String?   // "pending_review", "approved", "changes_requested"
+  
   parentId     String?   // For re-assignment chain
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -203,7 +268,7 @@ model Reminder {
   children  Reminder[] @relation("ReminderChain")
 }
 
-// ==================== INTERNAL CHAT ====================
+// ==================== INTERNAL CHAT & NOTIFICATIONS ====================
 
 model ChatMessage {
   id         String   @id @default(cuid())
@@ -211,12 +276,40 @@ model ChatMessage {
   mediaUrl   String?  // For images/videos
   mediaType  String?  // "image" | "video" | "file"
   senderId   String
-  receiverId String
+  receiverId String?  // Null if group chat
+  isGroup    Boolean  @default(false)
+  replyToId  String?  // ID of the message this replies to
+  mentions   String?  // JSON string array of user IDs
   isRead     Boolean  @default(false)
   createdAt  DateTime @default(now())
 
-  sender   User @relation("MessageSender", fields: [senderId], references: [id])
-  receiver User @relation("MessageReceiver", fields: [receiverId], references: [id])
+  sender   User         @relation("MessageSender", fields: [senderId], references: [id])
+  receiver User?        @relation("MessageReceiver", fields: [receiverId], references: [id])
+  replyTo  ChatMessage? @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies  ChatMessage[] @relation("MessageReplies")
+}
+
+model UserCooldown {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  endTime   DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String   // "mention" | "task" | "system" | "chat"
+  link      String?  // Optional URL to navigate to
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // ==================== COMMENTS & ACTIVITY ====================

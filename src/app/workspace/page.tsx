@@ -1,12 +1,27 @@
 'use client';
 
+/**
+ * WorkspacePage
+ * Entry point — renders the role-appropriate dashboard for the current user.
+ * If no session, redirects to /login.
+ */
+
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { Plus, FileText } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import Topbar from '@/components/Topbar/Topbar';
+import PageLoadingSkeleton from '@/components/Skeleton/PageLoadingSkeleton';
 import styles from './workspace.module.css';
+
+// Lazy-load all dashboards (avoids SSR issues with session)
+const OwnerDashboard = dynamic(() => import('@/components/Dashboards/OwnerDashboard'), { ssr: false });
+const ManagerDashboard = dynamic(() => import('@/components/Dashboards/ManagerDashboard'), { ssr: false });
+const ContentWriterDashboard = dynamic(() => import('@/components/Dashboards/ContentWriterDashboard'), { ssr: false });
+const ShooterDashboard = dynamic(() => import('@/components/Dashboards/ShooterDashboard'), { ssr: false });
+const EditorDashboard = dynamic(() => import('@/components/Dashboards/EditorDashboard'), { ssr: false });
+const PostingDashboard = dynamic(() => import('@/components/Dashboards/PostingDashboard'), { ssr: false });
 
 export default function WorkspacePage() {
     const { data: session, status } = useSession();
@@ -19,31 +34,31 @@ export default function WorkspacePage() {
     }, [status, router]);
 
     if (status === 'loading') {
-        return (
-            <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                height: '100vh', color: 'var(--text-secondary)', fontSize: '14px',
-            }}>
-                Loading...
-            </div>
-        );
+        return <PageLoadingSkeleton />;
     }
 
     if (!session) return null;
 
-    const createFirstPage = async () => {
-        try {
-            const res = await fetch('/api/pages', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title: 'Getting Started' }),
-            });
-            if (res.ok) {
-                const page = await res.json();
-                router.push(`/page/${page.id}`);
-            }
-        } catch (e) {
-            console.error('Failed to create page:', e);
+    const role = (session.user as { role?: string })?.role || 'content_writer';
+    const userName = session.user?.name || 'User';
+    const userId = (session.user as { id?: string })?.id || '';
+
+    /** Render the correct dashboard based on the user's role */
+    const renderDashboard = () => {
+        switch (role) {
+            case 'owner':
+                return <OwnerDashboard userName={userName} />;
+            case 'manager':
+                return <ManagerDashboard userName={userName} />;
+            case 'shooter':
+                return <ShooterDashboard userName={userName} userId={userId} />;
+            case 'editor':
+                return <EditorDashboard userName={userName} userId={userId} />;
+            case 'posting':
+                return <PostingDashboard userName={userName} userId={userId} />;
+            case 'content_writer':
+            default:
+                return <ContentWriterDashboard userName={userName} userId={userId} />;
         }
     };
 
@@ -52,19 +67,9 @@ export default function WorkspacePage() {
             <Sidebar />
             <div className={styles['workspace-main']}>
                 <Topbar />
-                <div className={styles['empty-workspace']}>
-                    <div className={styles['empty-workspace-icon']}>
-                        <FileText size={64} strokeWidth={1} />
-                    </div>
-                    <h2>Welcome to your workspace</h2>
-                    <p>
-                        Create your first page to get started. You can add notes, databases,
-                        scripts, and more.
-                    </p>
-                    <button className={styles['empty-workspace-btn']} onClick={createFirstPage}>
-                        <Plus size={16} />
-                        Create a page
-                    </button>
+                {/* Role-based dashboard content */}
+                <div style={{ overflowY: 'auto', height: 'calc(100vh - var(--topbar-height))' }}>
+                    {renderDashboard()}
                 </div>
             </div>
         </div>

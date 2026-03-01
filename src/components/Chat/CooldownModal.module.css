@@ -1,0 +1,236 @@
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(15, 15, 15, 0.6);
+    backdrop-filter: blur(2px);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal {
+    background-color: var(--bg-primary, #fff);
+    width: 400px;
+    max-width: 90vw;
+    border-radius: 8px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--divider, #e8e8e8);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.title {
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary, #111);
+}
+
+.warningIcon {
+    color: #e03131;
+}
+
+.closeBtn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary, #666);
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.closeBtn:hover {
+    background-color: var(--bg-hover, #f1f1f1);
+    color: var(--text-primary, #111);
+}
+
+.body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.description {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-secondary, #444);
+    line-height: 1.5;
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary, #111);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.durationOptions {
+    display: flex;
+    gap: 8px;
+}
+
+.durationBtn {
+    flex: 1;
+    padding: 8px 0;
+    background-color: var(--bg-secondary, #fafafa);
+    border: 1px solid var(--divider, #e8e8e8);
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary, #444);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.durationBtn:hover {
+    background-color: var(--bg-hover, #f1f1f1);
+}
+
+.durationBtn.active {
+    background-color: rgba(224, 49, 49, 0.1);
+    border-color: #e03131;
+    color: #e03131;
+}
+
+.input {
+    padding: 10px 12px;
+    border: 1px solid var(--divider, #e8e8e8);
+    border-radius: 4px;
+    font-size: 14px;
+    outline: none;
+    background-color: var(--bg-primary, #fff);
+    color: var(--text-primary, #111);
+    transition: border-color 0.2s;
+}
+
+.input:focus {
+    border-color: var(--primary-color, #2383e2);
+}
+
+.error {
+    font-size: 13px;
+    color: #e03131;
+    background-color: rgba(224, 49, 49, 0.1);
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--divider, #e8e8e8);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    background-color: var(--bg-secondary, #fafafa);
+}
+
+.cancelBtn,
+.applyBtn {
+    padding: 10px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.cancelBtn {
+    background: transparent;
+    border: 1px solid var(--divider, #e8e8e8);
+    color: var(--text-primary, #111);
+}
+
+.cancelBtn:hover {
+    background-color: var(--bg-hover, #f1f1f1);
+}
+
+.applyBtn {
+    background-color: #e03131;
+    border: none;
+    color: white;
+}
+
+.applyBtn:hover {
+    background-color: #c92a2a;
+}
+
+.applyBtn:disabled,
+.cancelBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Dark mode */
+:global(html.dark) .modal {
+    background-color: #1a1a1a;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+:global(html.dark) .header,
+:global(html.dark) .footer {
+    border-color: #333;
+}
+
+:global(html.dark) .footer {
+    background-color: #222;
+}
+
+:global(html.dark) .description {
+    color: #bbb;
+}
+
+:global(html.dark) .durationBtn {
+    background-color: #2a2a2a;
+    border-color: #333;
+    color: #bbb;
+}
+
+:global(html.dark) .durationBtn:hover {
+    background-color: #333;
+}
+
+:global(html.dark) .durationBtn.active {
+    background-color: rgba(224, 49, 49, 0.2);
+}
+
+:global(html.dark) .input {
+    background-color: #2a2a2a;
+    border-color: #333;
+    color: #fff;
+}
+
+:global(html.dark) .cancelBtn {
+    border-color: #444;
+    color: #eee;
+}
+
+:global(html.dark) .cancelBtn:hover {
+    background-color: #333;
+}

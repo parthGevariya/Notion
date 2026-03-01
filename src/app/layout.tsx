@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "./providers";
+import ChatSidebarPanel from "@/components/Chat/ChatSidebarPanel";
+import GlobalSocketProvider from "@/components/Collab/GlobalSocketProvider";
 
 export const metadata: Metadata = {
-  title: "Notion Clone - Task Management",
+  title: "GrowLouder — Content Production Platform",
   description: "A Notion-like task management and content production platform",
 };
 
@@ -15,7 +17,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <GlobalSocketProvider>
+            {children}
+            <ChatSidebarPanel />
+          </GlobalSocketProvider>
+        </Providers>
       </body>
     </html>
   );

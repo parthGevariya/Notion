@@ -31,3 +31,30 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(user);
 }
+
+// DELETE /api/users/[id] — remove a team member (owner/manager only, cannot delete self)
+export async function DELETE(_req: NextRequest, { params }: RouteParams) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const currentRole = (session.user as any).role;
+    if (currentRole !== 'owner' && currentRole !== 'manager') {
+        return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const currentUserId = (session.user as { id: string }).id;
+
+    // Cannot delete yourself
+    if (id === currentUserId) {
+        return NextResponse.json({ error: 'Cannot delete yourself' }, { status: 400 });
+    }
+
+    try {
+        await prisma.user.delete({ where: { id } });
+        return NextResponse.json({ ok: true });
+    } catch (e) {
+        console.error('[users DELETE]', e);
+        return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 });
+    }
+}

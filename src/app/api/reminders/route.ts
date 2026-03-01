@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
+const COLLAB_URL = process.env.COLLAB_SERVER_URL || 'http://localhost:3001';
+
 // GET /api/reminders — list reminders for current user
 export async function GET(req: NextRequest) {
     const session = await getServerSession(authOptions);
@@ -10,7 +12,7 @@ export async function GET(req: NextRequest) {
 
     const userId = (session.user as any).id;
     const { searchParams } = new URL(req.url);
-    const filter = searchParams.get('filter') || 'all'; // all, assigned, created
+    const filter = searchParams.get('filter') || 'all';
 
     const where: any = {};
     if (filter === 'assigned') {
@@ -34,13 +36,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(reminders);
 }
 
-// POST /api/reminders — create a reminder
+// POST /api/reminders — create a reminder & notify assignee in real-time
 export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
     const creatorId = (session.user as any).id;
+    const creatorName = session.user.name || 'Someone';
 
     if (!body.title || !body.assigneeId || !body.endDate) {
         return NextResponse.json({ error: 'title, assigneeId, endDate required' }, { status: 400 });
@@ -49,7 +52,6 @@ export async function POST(req: NextRequest) {
     const reminder = await prisma.reminder.create({
         data: {
             title: body.title,
-            details: body.details || null,
             assigneeId: body.assigneeId,
             creatorId,
             endDate: new Date(body.endDate),
@@ -60,6 +62,31 @@ export async function POST(req: NextRequest) {
             creator: { select: { id: true, name: true, avatar: true } },
         },
     });
+
+    // ── Real-time notification to the assignee ──────────────────────────────
+    if (body.assigneeId !== creatorId) {
+        try {
+            const notification = await prisma.notification.create({
+                data: {
+                    userId: body.assigneeId,
+                    title: 'New Task Assigned',
+                    message: `${creatorName} assigned you a task: "${body.title}"`,
+                    type: 'task',
+                    link: '/reminders',
+                },
+            });
+
+            // Push real-time event via collab-server HTTP endpoint (fire-and-forget)
+            fetch(`${COLLAB_URL}/push-notification`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: body.assigneeId, notification }),
+            }).catch((e) => console.warn('[Notif] Could not reach collab-server:', e.message));
+        } catch (e) {
+            console.error('[Notif] Failed to create notification:', e);
+        }
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     return NextResponse.json(reminder, { status: 201 });
 }

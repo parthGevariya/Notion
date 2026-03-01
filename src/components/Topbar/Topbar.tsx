@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import styles from './Topbar.module.css';
 import ThemeToggle from '@/components/Theme/ThemeToggle';
+import NotificationBell from '@/components/Notifications/NotificationBell';
+import TaskBar from './TaskBar';
 import { useI18n } from '@/lib/i18n';
 
 interface TopbarProps {
@@ -48,67 +50,73 @@ export default function Topbar({
     };
 
     return (
-        <div className={`${styles.topbar} ${scrolled ? styles.scrolled : ''}`}>
-            <div className={styles['topbar-left']}>
-                {sidebarCollapsed && (
-                    <button
-                        className={styles['sidebar-open-btn']}
-                        onClick={onToggleSidebar}
-                    >
-                        <Menu size={16} />
-                    </button>
-                )}
+        <div className={styles.topbarContainer}>
+            <div className={`${styles.topbar} ${scrolled ? styles.scrolled : ''}`}>
+                <div className={styles['topbar-left']}>
+                    {sidebarCollapsed && (
+                        <button
+                            className={styles['sidebar-open-btn']}
+                            onClick={onToggleSidebar}
+                        >
+                            <Menu size={16} />
+                        </button>
+                    )}
 
-                <div className={styles.breadcrumbs}>
-                    {breadcrumbs.map((crumb, i) => (
-                        <span key={crumb.id} style={{ display: 'flex', alignItems: 'center' }}>
-                            {i > 0 && (
-                                <span className={styles['breadcrumb-separator']}>
-                                    <ChevronRight size={12} />
-                                </span>
-                            )}
-                            <span
-                                className={styles['breadcrumb-item']}
-                                onClick={() => router.push(`/page/${crumb.id}`)}
-                            >
-                                {crumb.icon && (
-                                    <span className={styles['breadcrumb-icon']}>{crumb.icon}</span>
+                    <div className={styles.breadcrumbs}>
+                        {breadcrumbs.map((crumb, i) => (
+                            <span key={crumb.id} style={{ display: 'flex', alignItems: 'center' }}>
+                                {i > 0 && (
+                                    <span className={styles['breadcrumb-separator']}>
+                                        <ChevronRight size={12} />
+                                    </span>
                                 )}
-                                {crumb.title || 'Untitled'}
+                                <span
+                                    className={styles['breadcrumb-item']}
+                                    onClick={() => router.push(`/page/${crumb.id}`)}
+                                >
+                                    {crumb.icon && (
+                                        <span className={styles['breadcrumb-icon']}>{crumb.icon}</span>
+                                    )}
+                                    {crumb.title || 'Untitled'}
+                                </span>
                             </span>
-                        </span>
-                    ))}
-                    {page && breadcrumbs.length === 0 && (
-                        <span className={styles['breadcrumb-item']}>
-                            {page.icon && (
-                                <span className={styles['breadcrumb-icon']}>{page.icon}</span>
-                            )}
-                            {page.title || 'Untitled'}
-                        </span>
+                        ))}
+                        {page && breadcrumbs.length === 0 && (
+                            <span className={styles['breadcrumb-item']}>
+                                {page.icon && (
+                                    <span className={styles['breadcrumb-icon']}>{page.icon}</span>
+                                )}
+                                {page.title || 'Untitled'}
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                <div className={styles['topbar-right']}>
+                    <NotificationBell />
+                    <ThemeToggle />
+                    <LangToggle />
+                    {page && (
+                        <>
+                            <button className={styles['topbar-btn']} onClick={toggleFavorite} title="Add to favorites">
+                                <Star size={16} />
+                            </button>
+                            <button className={styles['topbar-btn']} title="Comments">
+                                <MessageSquare size={16} />
+                            </button>
+                            <button className={styles['topbar-btn']} title="More options">
+                                <MoreHorizontal size={16} />
+                            </button>
+                            <button className={`${styles['topbar-btn']} ${styles.share}`}>
+                                Share
+                            </button>
+                        </>
                     )}
                 </div>
             </div>
 
-            <div className={styles['topbar-right']}>
-                <ThemeToggle />
-                <LangToggle />
-                {page && (
-                    <>
-                        <button className={styles['topbar-btn']} onClick={toggleFavorite} title="Add to favorites">
-                            <Star size={16} />
-                        </button>
-                        <button className={styles['topbar-btn']} title="Comments">
-                            <MessageSquare size={16} />
-                        </button>
-                        <button className={styles['topbar-btn']} title="More options">
-                            <MoreHorizontal size={16} />
-                        </button>
-                        <button className={`${styles['topbar-btn']} ${styles.share}`}>
-                            Share
-                        </button>
-                    </>
-                )}
-            </div>
+            {/* TaskBar appears below Topbar but remains fixed/sticky */}
+            <TaskBar />
         </div>
     );
 }

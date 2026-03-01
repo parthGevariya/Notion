@@ -1,0 +1,290 @@
+/* ===== Dashboard shared styles ===== */
+
+.dashboard {
+  padding: 40px 60px 60px;
+  max-width: 1100px;
+  margin: 0 auto;
+  animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 36px;
+  gap: 16px;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.greeting {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.title {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.roleChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Role chip colors */
+.roleOwner     { background: var(--tag-purple);  color: var(--tag-purple-text); }
+.roleManager   { background: var(--tag-blue);    color: var(--tag-blue-text); }
+.roleEditor    { background: var(--tag-green);   color: var(--tag-green-text); }
+.roleWriter    { background: var(--tag-orange);  color: var(--tag-orange-text); }
+.roleShooter   { background: var(--tag-yellow);  color: var(--tag-yellow-text); }
+.rolePosting   { background: var(--tag-red);     color: var(--tag-red-text); }
+
+/* ── Stat cards row ── */
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 36px;
+}
+
+.statCard {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  cursor: default;
+}
+
+.statCard:hover {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(35,131,226,0.1);
+}
+
+.statLabel {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.statValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.statSub {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* ── Section ── */
+.section {
+  margin-bottom: 32px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.sectionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.sectionAction {
+  font-size: 12px;
+  color: var(--accent-blue);
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  transition: background 0.1s;
+}
+.sectionAction:hover { background: var(--bg-hover); }
+
+/* ── Quick link cards ── */
+.quickLinks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.quickCard {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, transform 0.12s;
+  text-decoration: none !important;
+  color: var(--text-primary);
+}
+
+.quickCard:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-color);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.quickCardIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.quickCardText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.quickCardTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.quickCardDesc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Activity / task list ── */
+.listCard {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.listItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border-light);
+  transition: background 0.1s;
+  cursor: pointer;
+}
+
+.listItem:last-child { border-bottom: none; }
+.listItem:hover { background: var(--bg-hover); }
+
+.listItemIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+.listItemMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.listItemTitle {
+  font-size: 14px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.listItemSub {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.badgeGreen  { background: var(--tag-green);  color: var(--tag-green-text); }
+.badgeYellow { background: var(--tag-yellow); color: var(--tag-yellow-text); }
+.badgeRed    { background: var(--tag-red);    color: var(--tag-red-text); }
+.badgeBlue   { background: var(--tag-blue);   color: var(--tag-blue-text); }
+.badgeGray   { background: var(--tag-gray);   color: var(--tag-gray-text); }
+.badgePurple { background: var(--tag-purple); color: var(--tag-purple-text); }
+
+/* ── Empty state ── */
+.emptyState {
+  text-align: center;
+  padding: 32px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+/* ── Two-column layout ── */
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .dashboard { padding: 24px 20px; }
+  .twoCol { grid-template-columns: 1fr; }
+  .statsRow { grid-template-columns: repeat(2, 1fr); }
+}

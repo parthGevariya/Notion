@@ -1,0 +1,333 @@
+.container {
+    padding: 0 40px 100px;
+    max-width: 1400px;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.colToggleBtn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.1s;
+}
+
+.colToggleBtn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.colMenu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 200px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    padding: 8px 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.colMenuHeader {
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+}
+
+.colMenuItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.colMenuItem:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.colMenuItem input[type="checkbox"] {
+    cursor: pointer;
+    accent-color: var(--text-primary);
+}
+
+.clientBadge {
+    padding: 4px 12px;
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+    border-radius: var(--radius-full);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.tableWrapper {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-primary);
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.table th {
+    padding: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    background: var(--bg-hover);
+}
+
+.table td {
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    padding: 0;
+    position: relative;
+    height: 40px;
+}
+
+.actionCell {
+    text-align: center;
+}
+
+.deleteBtn {
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.deleteBtn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.cell {
+    padding: 0 8px;
+}
+
+.titleInput {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+}
+
+.titleInput::placeholder {
+    color: var(--text-tertiary);
+}
+
+.dateInput {
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+    font-family: inherit;
+}
+
+.select {
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+    cursor: pointer;
+}
+
+.statusSelect {
+    width: 100%;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+}
+
+.scriptCell {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.expandBtn {
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    border-radius: var(--radius-sm);
+}
+
+.expandBtn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.addRowBtn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 16px;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    width: 100%;
+    text-align: left;
+    transition: background 0.1s;
+}
+
+.addRowBtn:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.uploadBtn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.uploadBtn:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.uploadingText {
+    font-size: 13px;
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+.driveLinkBtn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: rgba(37, 99, 235, 0.1);
+    color: #3b82f6;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.driveLinkBtn:hover {
+    background: rgba(37, 99, 235, 0.2);
+}
+
+.loading {
+    padding: 40px;
+    color: var(--text-tertiary);
+    font-size: 15px;
+}
+
+/* Socials Column & Tooltip */
+.tooltipContainer {
+    position: relative;
+    display: inline-block;
+}
+
+.socialBtnDisabled {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-tertiary);
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    cursor: not-allowed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.6;
+}
+
+.tooltipText {
+    visibility: hidden;
+    width: max-content;
+    background-color: var(--text-primary);
+    color: var(--bg-primary);
+    text-align: center;
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 500;
+
+    /* Position the tooltip above the button */
+    position: absolute;
+    z-index: 10;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+
+    /* Fade in effect */
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.tooltipContainer:hover .tooltipText {
+    visibility: visible;
+    opacity: 1;
+}

@@ -19,9 +19,22 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
         if (body.status === 'completed') data.completedAt = new Date();
     }
     if (body.title !== undefined) data.title = body.title;
+    if (body.description !== undefined) data.description = body.description;
     if (body.details !== undefined) data.details = body.details;
     if (body.assigneeId !== undefined) data.assigneeId = body.assigneeId;
     if (body.endDate !== undefined) data.endDate = new Date(body.endDate);
+
+    if (body.reviewStatus !== undefined) {
+        data.reviewStatus = body.reviewStatus;
+        if (body.reviewStatus === 'pending_review') {
+            data.status = 'in_review';
+        } else if (body.reviewStatus === 'approved') {
+            data.status = 'completed';
+            data.completedAt = new Date();
+        } else if (body.reviewStatus === 'changes_requested') {
+            data.status = 'in_progress';
+        }
+    }
 
     const reminder = await prisma.reminder.update({
         where: { id },

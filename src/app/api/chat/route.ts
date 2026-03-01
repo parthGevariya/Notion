@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
     const partnerIds = [...new Set([
         ...sent.map(m => m.receiverId),
         ...received.map(m => m.senderId),
-    ])];
+    ])].filter((id): id is string => id !== null);
 
     const conversations = await Promise.all(
         partnerIds.map(async (pid) => {

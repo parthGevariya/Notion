@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Settings, Users, Shield, Trash2, Edit3 } from 'lucide-react';
+import { Settings, Users, Shield, Edit3, Plus, Trash2, Briefcase } from 'lucide-react';
 import Sidebar from '@/components/Sidebar/Sidebar';
+import PasswordConfirmModal from '@/components/PasswordConfirmModal/PasswordConfirmModal';
 import { ROLE_LABELS } from '@/lib/types';
 import type { Role } from '@/lib/types';
 
@@ -18,12 +19,23 @@ interface WorkspaceUser {
     createdAt: string;
 }
 
+interface ClientItem {
+    id: string;
+    name: string;
+    emoji: string | null;
+    pages: { id: string; pageType: string; title: string }[];
+}
+
 export default function SettingsPage() {
     const { data: session, status: authStatus } = useSession();
     const router = useRouter();
     const [users, setUsers] = useState<WorkspaceUser[]>([]);
+    const [clients, setClients] = useState<ClientItem[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editRole, setEditRole] = useState('');
+    const [newClientName, setNewClientName] = useState('');
+    const [addingClient, setAddingClient] = useState(false);
+    const [deleteModal, setDeleteModal] = useState<{ type: 'client' | 'member'; id: string; name: string } | null>(null);
     const currentRole = (session?.user as any)?.role;
     const canManage = currentRole === 'owner' || currentRole === 'manager';
 
@@ -38,6 +50,17 @@ export default function SettingsPage() {
             .catch(() => { });
     }, []);
 
+    const fetchClients = useCallback(() => {
+        fetch('/api/clients')
+            .then(r => r.ok ? r.json() : [])
+            .then(setClients)
+            .catch(() => { });
+    }, []);
+
+    useEffect(() => {
+        if (canManage) fetchClients();
+    }, [canManage, fetchClients]);
+
     const handleRoleChange = async (userId: string, newRole: string) => {
         setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
         setEditingId(null);
@@ -46,6 +69,38 @@ export default function SettingsPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ role: newRole }),
         });
+    };
+
+    const addClient = async () => {
+        if (!newClientName.trim()) return;
+        setAddingClient(true);
+        const res = await fetch('/api/clients', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: newClientName.trim() }),
+        });
+        if (res.ok) {
+            setNewClientName('');
+            fetchClients();
+        } else {
+            const err = await res.json();
+            alert(err.error || 'Failed to add client');
+        }
+        setAddingClient(false);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!deleteModal) return;
+        const { type, id } = deleteModal;
+        const url = type === 'client' ? `/api/clients/${id}` : `/api/users/${id}`;
+        const res = await fetch(url, { method: 'DELETE' });
+        if (res.ok) {
+            if (type === 'client') fetchClients();
+            else setUsers(prev => prev.filter(u => u.id !== id));
+        } else {
+            alert(`Failed to delete ${type}`);
+        }
+        setDeleteModal(null);
     };
 
     if (authStatus === 'loading') {
@@ -81,7 +136,7 @@ export default function SettingsPage() {
 
                     {/* User Management */}
                     <div style={{
-                        border: '1px solid var(--divider)', borderRadius: 8, overflow: 'hidden',
+                        border: '1px solid var(--divider)', borderRadius: 8, overflow: 'hidden', marginBottom: 32,
                     }}>
                         <div style={{
                             padding: '12px 16px', background: 'var(--bg-secondary)',
@@ -138,24 +193,140 @@ export default function SettingsPage() {
                                             {ROLE_LABELS[user.role as Role] || user.role}
                                         </span>
                                         {canManage && user.id !== (session.user as any).id && (
-                                            <button
-                                                onClick={() => { setEditingId(user.id); setEditRole(user.role); }}
-                                                style={{
-                                                    padding: 4, border: 'none', background: 'none', cursor: 'pointer',
-                                                    color: 'var(--text-tertiary)', borderRadius: 4,
-                                                }}
-                                                title="Change role"
-                                            >
-                                                <Edit3 size={14} />
-                                            </button>
+                                            <>
+                                                <button
+                                                    onClick={() => { setEditingId(user.id); setEditRole(user.role); }}
+                                                    style={{
+                                                        padding: 4, border: 'none', background: 'none', cursor: 'pointer',
+                                                        color: 'var(--text-tertiary)', borderRadius: 4,
+                                                    }}
+                                                    title="Change role"
+                                                >
+                                                    <Edit3 size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={() => setDeleteModal({ type: 'member', id: user.id, name: user.name })}
+                                                    style={{
+                                                        padding: 4, border: 'none', background: 'none', cursor: 'pointer',
+                                                        color: 'var(--text-tertiary)', borderRadius: 4,
+                                                    }}
+                                                    title="Delete member"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </>
                                         )}
                                     </div>
                                 )}
                             </div>
                         ))}
                     </div>
+
+                    {/* Client Management — owner/manager only */}
+                    {canManage && (
+                        <div style={{
+                            border: '1px solid var(--divider)', borderRadius: 8, overflow: 'hidden',
+                        }}>
+                            <div style={{
+                                padding: '12px 16px', background: 'var(--bg-secondary)',
+                                borderBottom: '1px solid var(--divider)', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                fontSize: 14, fontWeight: 600, color: 'var(--text-primary)',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <Briefcase size={16} /> Clients ({clients.length})
+                                </div>
+                            </div>
+
+                            {/* Add client form */}
+                            <div style={{
+                                display: 'flex', gap: 8, padding: '12px 16px',
+                                borderBottom: '1px solid var(--divider)',
+                            }}>
+                                <input
+                                    value={newClientName}
+                                    onChange={e => setNewClientName(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') addClient(); }}
+                                    placeholder="New client name..."
+                                    style={{
+                                        flex: 1, padding: '8px 12px', borderRadius: 6,
+                                        border: '1px solid var(--divider)', background: 'var(--bg-primary)',
+                                        color: 'var(--text-primary)', fontSize: 13, outline: 'none',
+                                    }}
+                                />
+                                <button
+                                    onClick={addClient}
+                                    disabled={addingClient || !newClientName.trim()}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: 6,
+                                        padding: '8px 16px', borderRadius: 6, border: 'none',
+                                        background: newClientName.trim() ? 'var(--accent-blue)' : 'var(--bg-hover)',
+                                        color: newClientName.trim() ? '#fff' : 'var(--text-tertiary)',
+                                        fontSize: 13, fontWeight: 600, cursor: newClientName.trim() ? 'pointer' : 'default',
+                                        transition: 'background 0.15s',
+                                    }}
+                                >
+                                    <Plus size={14} />
+                                    {addingClient ? 'Adding...' : 'Add Client'}
+                                </button>
+                            </div>
+
+                            {/* Client list */}
+                            {clients.length === 0 ? (
+                                <div style={{ padding: '20px 16px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                                    No clients yet. Add your first client above.
+                                </div>
+                            ) : (
+                                clients.map(client => (
+                                    <div key={client.id} style={{
+                                        display: 'flex', alignItems: 'center', gap: 12,
+                                        padding: '12px 16px', borderBottom: '1px solid var(--divider)',
+                                    }}>
+                                        <div style={{
+                                            width: 36, height: 36, borderRadius: '50%',
+                                            background: 'var(--bg-hover)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: 18,
+                                        }}>
+                                            {client.emoji || '🏢'}
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
+                                                {client.name}
+                                            </div>
+                                            <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                                                {client.pages.length} page{client.pages.length !== 1 ? 's' : ''}
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => setDeleteModal({ type: 'client', id: client.id, name: client.name })}
+                                            style={{
+                                                padding: 6, border: 'none', background: 'none', cursor: 'pointer',
+                                                color: 'var(--text-tertiary)', borderRadius: 4,
+                                            }}
+                                            title="Delete client"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
+
+            {/* Password confirm modal for destructive actions */}
+            {deleteModal && (
+                <PasswordConfirmModal
+                    title={deleteModal.type === 'client' ? 'Delete Client' : 'Delete Team Member'}
+                    message={deleteModal.type === 'client'
+                        ? `This will permanently delete "${deleteModal.name}" and all their associated pages (scripts, calendars).`
+                        : `This will permanently remove "${deleteModal.name}" from the workspace.`
+                    }
+                    onConfirm={handleDeleteConfirm}
+                    onCancel={() => setDeleteModal(null)}
+                />
+            )}
         </div>
     );
 }

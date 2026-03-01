@@ -1,0 +1,167 @@
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(15, 15, 15, 0.4);
+    backdrop-filter: blur(1px);
+    z-index: 100000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 15vh;
+}
+
+.modal {
+    width: 600px;
+    max-width: 90vw;
+    background-color: var(--bg-primary, #fff);
+    border-radius: 8px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--divider, #e8e8e8);
+}
+
+.searchHeader {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--divider, #e8e8e8);
+}
+
+.searchIcon {
+    color: var(--text-tertiary, #999);
+    margin-right: 12px;
+}
+
+.searchInput {
+    flex: 1;
+    font-size: 18px;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text-primary, #111);
+}
+
+.searchInput::placeholder {
+    color: var(--text-tertiary, #999);
+}
+
+.closeBtn {
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary, #999);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+.closeBtn:hover {
+    background-color: var(--bg-hover, #f1f1f1);
+    color: var(--text-primary, #111);
+}
+
+.resultsContainer {
+    max-height: 50vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.loading,
+.empty {
+    padding: 24px;
+    text-align: center;
+    color: var(--text-secondary, #666);
+    font-size: 14px;
+}
+
+.resultsList {
+    padding: 8px 0;
+}
+
+.sectionTitle {
+    padding: 8px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-secondary, #666);
+    letter-spacing: 0.5px;
+}
+
+.resultItem {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.1s;
+}
+
+.resultItem:hover {
+    background-color: var(--bg-hover, rgba(0, 0, 0, 0.04));
+}
+
+.resultIcon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    color: var(--text-secondary, #666);
+    font-size: 18px;
+}
+
+.resultDetails {
+    flex: 1;
+}
+
+.resultTitle {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary, #111);
+}
+
+.resultMeta {
+    font-size: 12px;
+    color: var(--text-secondary, #666);
+    margin-top: 2px;
+}
+
+.hints {
+    padding: 24px;
+    text-align: center;
+    color: var(--text-secondary, #666);
+    font-size: 13px;
+    background-color: var(--bg-secondary, #fafafa);
+    border-top: 1px solid var(--divider, #e8e8e8);
+}
+
+.shortcutHint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 12px;
+    font-size: 12px;
+}
+
+.kbdKey {
+    background-color: var(--bg-hover, #efefef);
+    border: 1px solid var(--divider, #ccc);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-primary, #333);
+}
+
+/* Dark Mode — handled via CSS variables in globals.css */
