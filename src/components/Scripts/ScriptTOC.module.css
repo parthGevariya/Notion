@@ -1,0 +1,182 @@
+/* ScriptTOC.module.css — Floating right-edge Table of Contents */
+
+/* ── Outer wrapper: anchored to left edge of editor body ── */
+.tocOuter {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    align-items: flex-start; /* notches at top */
+    z-index: 50;
+}
+
+/* ── Slim always-visible handle (minimap/ruler) ── */
+.handle {
+    width: 24px;
+    height: auto;  /* size to notches, not full height */
+    margin-top: 12px; /* small gap from top toolbar edge */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    order: 1;
+    background: transparent;
+    padding: 4px 0;
+    border-radius: 0 4px 4px 0;
+}
+
+.notchContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    align-items: center;
+    width: 14px;
+}
+
+.notch {
+    width: 3px;
+    height: 12px;
+    background: color-mix(in srgb, var(--accent-blue) 40%, transparent);
+    opacity: 0.7;
+    border-radius: 2px;
+    transition: all 0.2s;
+}
+
+.notchActive {
+    height: 20px;
+    background: var(--accent-blue);
+    opacity: 1;
+    box-shadow: 0 0 6px color-mix(in srgb, var(--accent-blue) 60%, transparent);
+}
+
+.tocOuter:hover .notch {
+    opacity: 1;
+    background: color-mix(in srgb, var(--accent-blue) 70%, transparent);
+}
+
+.tocOuter:hover .handle {
+    background: color-mix(in srgb, var(--accent-blue) 8%, transparent);
+}
+
+/* ── Expandable panel — opens to the RIGHT of the handle ── */
+.panel {
+    width: 0;
+    overflow: hidden;
+    background: var(--bg-secondary);
+    border: 1px solid var(--accent-blue);
+    border-left: 3px solid var(--accent-blue);
+    border-radius: 0 10px 10px 0;
+    box-shadow: var(--shadow-md);
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.2s ease;
+    opacity: 0;
+    order: 2;  /* panel opens to the RIGHT */
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.tocOuter:hover .panel {
+    width: 230px;
+    opacity: 1;
+}
+
+/* ── Panel header ── */
+.panelHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--border-light);
+    flex-shrink: 0;
+}
+
+.panelTitle {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.panelCount {
+    background: var(--bg-tertiary);
+    border-radius: 10px;
+    padding: 1px 7px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    font-weight: 500;
+}
+
+/* ── Nav list ── */
+.navList {
+    overflow-y: auto;
+    padding: 6px;
+    flex: 1;
+}
+
+.navItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 8px;
+    border-radius: var(--radius-sm);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.1s;
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    font-family: var(--font-sans);
+}
+
+.navItem:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.navItemActive {
+    background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
+    color: var(--accent-blue);
+    font-weight: 600;
+}
+
+.navNum {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--bg-tertiary);
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--text-tertiary);
+}
+
+.navItemActive .navNum {
+    background: color-mix(in srgb, var(--accent-blue) 20%, transparent);
+    color: var(--accent-blue);
+}
+
+.navText {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── Empty state ── */
+.empty {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    text-align: center;
+    padding: 20px 12px;
+    line-height: 1.6;
+}

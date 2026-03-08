@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { createGoogleDoc, setDocPublicRead } from '@/lib/google-docs';
 
 export async function GET() {
     const session = await getServerSession(authOptions);
@@ -55,6 +56,16 @@ export async function POST(req: NextRequest) {
         const userId = (session.user as { id: string }).id;
         if (!userId) return NextResponse.json({ error: 'User ID missing from session' }, { status: 400 });
 
+        // Auto-create Google Doc for the new client
+        let docId: string | null = null;
+        try {
+            docId = await createGoogleDoc(`${name.trim()} — Scripts`);
+            await setDocPublicRead(docId);
+        } catch (err) {
+            console.error('[clients POST] Failed to auto-create Google Doc', err);
+            // We continue creating the client even if Doc creation fails (it will auto-create on first sync later)
+        }
+
         // Create client
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const client = await (prisma as any).client.create({
@@ -62,6 +73,7 @@ export async function POST(req: NextRequest) {
                 name: name.trim(),
                 emoji: emoji || '🏢',
                 workspaceId: workspace.id,
+                ...(docId && { googleDocId: docId }),
             },
         });
 

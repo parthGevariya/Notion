@@ -329,3 +329,38 @@
 .floating-toolbar-select:hover {
     background: var(--bg-hover);
 }
+
+/* =========== Script Document (long-form) =========== */
+/* Applied to the unified script editing document */
+
+.script-doc-prose h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-top: 56px;
+    margin-bottom: 8px;
+    padding-top: 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-light);
+    /* Accent line */
+    border-left: 4px solid var(--accent-blue);
+    padding-left: 14px;
+    scroll-margin-top: 80px; /* offset for sticky topbar */
+}
+
+/* First H1 has no extra top margin */
+.script-doc-prose > *:first-child h1,
+.script-doc-prose h1:first-child {
+    margin-top: 12px;
+}
+
+.script-doc-prose p {
+    line-height: 1.75;
+    font-size: 15.5px;
+    color: var(--text-primary);
+}
+
+.script-doc-prose a {
+    color: var(--accent-blue);
+    word-break: break-word;
+}

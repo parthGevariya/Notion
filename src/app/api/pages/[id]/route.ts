@@ -83,6 +83,15 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        // Guard: system pages tied to clients cannot be deleted directly
+        const page = await prisma.page.findUnique({ where: { id }, select: { pageType: true } });
+        if (page?.pageType === 'script_page' || page?.pageType === 'calendar_page') {
+            return NextResponse.json(
+                { error: 'System pages cannot be deleted. Delete the client instead.' },
+                { status: 403 },
+            );
+        }
+
         await prisma.page.delete({ where: { id } });
         return NextResponse.json({ success: true });
     } catch (error) {
@@ -90,3 +99,4 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
+

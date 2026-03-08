@@ -195,6 +195,7 @@ export default function PageView() {
                     <Topbar page={page} />
                     <ScriptPageView
                         pageId={pageId}
+                        clientId={page.clientId ?? ''}
                         clientName={page.client?.name}
                     />
                 </div>

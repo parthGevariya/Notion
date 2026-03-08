@@ -1,97 +1,91 @@
-/* ScriptPageView.module.css */
+/* ScriptPageView.module.css — Redesigned long-form document layout */
 
-.container {
-    display: flex;
-    height: calc(100vh - var(--topbar-height, 52px));
-    overflow: hidden;
-    background: var(--bg-primary);
-}
-
-.container.fullscreen {
-    position: fixed;
-    inset: 0;
-    z-index: 200;
-    height: 100vh;
-}
-
-/* ── Left panel: script list ── */
-.panel {
-    width: 300px;
-    min-width: 220px;
-    max-width: 340px;
-    border-right: 1px solid var(--border-color);
+/* ── Root container ── */
+.pageContainer {
     display: flex;
     flex-direction: column;
-    background: var(--bg-secondary);
+    height: calc(100vh - var(--topbar-height, 52px));
+    background: var(--bg-primary);
     overflow: hidden;
 }
 
-.panelHeader {
+/* ── Top toolbar ── */
+.toolbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 16px 12px;
+    padding: 10px 24px 10px 28px;
     border-bottom: 1px solid var(--border-light);
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
-.panelTitle {
-    font-size: 13px;
-    font-weight: 600;
+.toolbarLeft {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pageTitle {
+    font-size: 15px;
+    font-weight: 700;
     color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 6px;
 }
 
-.count {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-tertiary);
-    border-radius: 10px;
-    padding: 1px 7px;
-    font-size: 11px;
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
-.panelActions {
+.toolbarRight {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
 }
 
-.addBtn {
+.syncMsg {
+    font-size: 12px;
+    color: var(--accent-blue);
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.syncMsgError {
+    color: var(--accent-red);
+}
+
+.docLinkBtn {
     display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
+    gap: 5px;
+    padding: 5px 11px;
     border-radius: var(--radius-sm);
-    background: var(--accent-blue);
+    background: #0f7b6c;
     color: #fff;
     font-size: 12px;
-    font-weight: 500;
-    border: none;
-    cursor: pointer;
+    font-weight: 600;
+    text-decoration: none;
     transition: background 0.12s;
+    flex-shrink: 0;
 }
 
-.addBtn:hover {
-    background: #1c6cd4;
+.docLinkBtn:hover {
+    background: #0a6258;
+    text-decoration: none;
 }
+
 
 .iconBtn {
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
+    gap: 5px;
+    padding: 5px 10px;
     border-radius: var(--radius-sm);
     background: none;
-    border: none;
+    border: 1px solid var(--border-color);
     color: var(--text-secondary);
+    font-size: 12px;
     cursor: pointer;
-    transition: background 0.1s;
+    transition: background 0.1s, color 0.1s;
 }
 
 .iconBtn:hover {
@@ -109,266 +103,103 @@
 }
 
 @keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
+    to { transform: rotate(360deg); }
 }
 
-.syncMsg {
-    font-size: 12px;
-    color: var(--accent-blue);
-    padding: 6px 16px;
-    text-align: center;
-}
-
-.empty {
-    padding: 24px 16px;
-    text-align: center;
-    color: var(--text-tertiary);
-    font-size: 13px;
-}
-
-.scriptList {
-    list-style: none;
-    margin: 0;
-    padding: 6px;
-    overflow-y: auto;
-    flex: 1;
-}
-
-.scriptItem {
+.addBtn {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 10px;
+    gap: 5px;
+    padding: 6px 14px;
     border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: background 0.1s;
-    position: relative;
-}
-
-.scriptItem:hover {
-    background: var(--bg-hover);
-}
-
-.scriptItem.active {
     background: var(--accent-blue);
-    background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
-    box-shadow: inset 2px 0 0 var(--accent-blue);
-}
-
-.scriptItem.locked {
-    opacity: 0.6;
-    cursor: default;
-}
-
-.scriptNum {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: var(--bg-tertiary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--text-secondary);
-    flex-shrink: 0;
-}
-
-.scriptInfo {
-    flex: 1;
-    min-width: 0;
-}
-
-.scriptTitle {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-primary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.scriptMeta {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 3px;
-    flex-wrap: wrap;
-}
-
-.statusChip {
-    display: inline-flex;
-    align-items: center;
-    padding: 1px 7px;
-    border-radius: 8px;
-    font-size: 10px;
+    color: #fff;
+    font-size: 12.5px;
     font-weight: 600;
-}
-
-.lockChip {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    font-size: 10px;
-    color: var(--text-tertiary);
-}
-
-.deleteBtn {
-    visibility: hidden;
-    background: none;
     border: none;
-    color: var(--text-tertiary);
     cursor: pointer;
-    padding: 3px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
+    transition: background 0.12s;
 }
 
-.deleteBtn:hover {
-    color: var(--red);
-    background: var(--bg-hover);
+.addBtn:hover {
+    background: #1c6cd4;
 }
 
-.scriptItem:hover .deleteBtn {
-    visibility: visible;
-}
-
-/* ── Right panel: editor ── */
-.editor {
+/* ── Body: scroll area + floating TOC container ── */
+.body {
     flex: 1;
-    display: flex;
-    flex-direction: column;
     overflow: hidden;
-    background: var(--bg-primary);
+    position: relative; /* TOC positions relative to this */
+    display: flex;
 }
 
-.editorEmpty {
+/* ── Editor scroll area ── */
+.editorScrollArea {
     flex: 1;
+    overflow-y: auto;
+    /* Scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+}
+
+.editorScrollArea::-webkit-scrollbar {
+    width: 6px;
+}
+.editorScrollArea::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+}
+
+/* ── Inner content: centered like Notion ── */
+.editorInner {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 48px 40px 120px;
+}
+
+/* ── Loading placeholder ── */
+.loading {
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 12px;
+    height: 200px;
     color: var(--text-tertiary);
     font-size: 14px;
 }
 
-.editorHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 24px;
-    border-bottom: 1px solid var(--border-light);
-    background: var(--bg-secondary);
-    flex-wrap: wrap;
-}
-
-.editorMeta {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex: 1;
-    min-width: 0;
-}
-
-.editorNum {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    white-space: nowrap;
-}
-
-.editorTitle {
-    flex: 1;
-    background: none;
-    border: none;
-    outline: none;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-primary);
-    font-family: var(--font-sans);
-    min-width: 0;
-}
-
-.editorTitle::placeholder {
-    color: var(--text-tertiary);
-}
-
-.editorControls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-}
-
-.statusSelect {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    font-size: 12px;
-    font-weight: 600;
-    padding: 4px 8px;
-    cursor: pointer;
-    outline: none;
-    color: var(--text-secondary);
-}
-
-.reelInput {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    font-size: 12px;
-    padding: 4px 10px;
-    color: var(--text-primary);
-    outline: none;
-    width: 180px;
-}
-
-.reelInput::placeholder {
-    color: var(--text-tertiary);
-}
-
-.reelLink {
-    display: flex;
-    align-items: center;
-    color: var(--accent-blue);
-}
-
-.lockWarning {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 24px;
-    background: color-mix(in srgb, var(--tag-yellow) 20%, transparent);
-    color: var(--text-primary);
-    font-size: 12px;
-    border-bottom: 1px solid var(--border-light);
-}
-
-.tiptapWrap {
-    flex: 1;
-    overflow-y: auto;
-    padding: 32px 60px;
+/* ── Script section wrapper (wraps H1 + content set by TipTap custom heading) ── */
+.scriptSection {
+    margin-bottom: 48px;
 }
 
 @media (max-width: 768px) {
-    .container {
-        flex-direction: column;
+    .editorInner {
+        padding: 24px 16px 80px;
     }
 
-    .panel {
-        width: 100%;
-        max-width: 100%;
-        border-right: none;
-        border-bottom: 1px solid var(--border-color);
-        max-height: 220px;
+    .toolbar {
+        padding: 8px 16px;
     }
+}
 
-    .tiptapWrap {
-        padding: 16px 20px;
-    }
+.btnError {
+    border-color: var(--accent-red) !important;
+    background: color-mix(in srgb, var(--accent-red) 10%, transparent) !important;
+    color: var(--accent-red) !important;
+}
+
+.syncTimeLabel {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    background: var(--bg-primary);
+    padding: 4px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--border-light);
+}
+
+.syncTimeLabel svg {
+    color: var(--accent-blue);
 }

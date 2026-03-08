@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/db';
+import { deleteFile } from '@/lib/google-drive';
 
 // Next.js 16 requires params to be a Promise
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -61,6 +62,21 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     if (role !== 'owner' && role !== 'manager') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const { id } = await params;
+
+    // Fetch client to get linked Google Doc ID before deleting
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client = await (prisma as any).client.findUnique({ where: { id }, select: { googleDocId: true } });
+
+    // Delete linked Google Doc from Drive (silently handles 404)
+    if (client?.googleDocId) {
+        try {
+            await deleteFile(client.googleDocId);
+        } catch (err) {
+            console.error('[client/delete] Failed to delete Google Doc:', err);
+            // Do not block client deletion even if Drive API fails
+        }
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (prisma as any).client.delete({ where: { id } });
     return NextResponse.json({ ok: true });
