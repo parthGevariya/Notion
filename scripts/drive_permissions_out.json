@@ -1,0 +1,116 @@
+{
+  "VideoFolder": {
+    "id": "1n48Huo6l7h3q1znW0jaX3dd5bMafiqQr",
+    "name": "Videos",
+    "owners": [
+      {
+        "kind": "drive#user",
+        "displayName": "gltaskmanagement",
+        "photoLink": "https://lh3.googleusercontent.com/a-/ALV-UjXIe4PgLN7VDQaSwmmKLrH7KonD7zdMqR9qN9nIy3tkr4FOrO8=s64",
+        "me": false,
+        "permissionId": "12802585005220779453",
+        "emailAddress": "gltaskmanagement@gl-task-management.iam.gserviceaccount.com"
+      }
+    ],
+    "permissions": [
+      {
+        "kind": "drive#permission",
+        "id": "12492134794354286104",
+        "type": "user",
+        "emailAddress": "taskmanagementgl@gmail.com",
+        "role": "writer",
+        "displayName": "TaskManagement GL",
+        "photoLink": "https://lh3.googleusercontent.com/a/ACg8ocJExId6PSbHvklaPmgxuzfVgtAdeYl8gsdXG1ukfrBe0Oufow=s64",
+        "permissionDetails": [
+          {
+            "permissionType": "file",
+            "role": "writer",
+            "inherited": true
+          }
+        ],
+        "deleted": false,
+        "pendingOwner": false
+      },
+      {
+        "kind": "drive#permission",
+        "id": "12802585005220779453",
+        "type": "user",
+        "emailAddress": "gltaskmanagement@gl-task-management.iam.gserviceaccount.com",
+        "role": "owner",
+        "displayName": "gltaskmanagement",
+        "photoLink": "https://lh3.googleusercontent.com/a-/ALV-UjXIe4PgLN7VDQaSwmmKLrH7KonD7zdMqR9qN9nIy3tkr4FOrO8=s64",
+        "permissionDetails": [
+          {
+            "permissionType": "file",
+            "role": "writer",
+            "inherited": true
+          },
+          {
+            "permissionType": "file",
+            "role": "owner",
+            "inherited": false
+          }
+        ],
+        "deleted": false,
+        "pendingOwner": false
+      }
+    ]
+  },
+  "ThumbnailFolder": {
+    "id": "1Sq5Kkcu7avdUkTfj20o9lEV3I6FiTqb8",
+    "name": "Thumbnail",
+    "owners": [
+      {
+        "kind": "drive#user",
+        "displayName": "TaskManagement GL",
+        "photoLink": "https://lh3.googleusercontent.com/a/ACg8ocJExId6PSbHvklaPmgxuzfVgtAdeYl8gsdXG1ukfrBe0Oufow=s64",
+        "me": true,
+        "permissionId": "12492134794354286104",
+        "emailAddress": "taskmanagementgl@gmail.com"
+      }
+    ],
+    "permissions": [
+      {
+        "kind": "drive#permission",
+        "id": "12492134794354286104",
+        "type": "user",
+        "emailAddress": "taskmanagementgl@gmail.com",
+        "role": "owner",
+        "displayName": "TaskManagement GL",
+        "photoLink": "https://lh3.googleusercontent.com/a/ACg8ocJExId6PSbHvklaPmgxuzfVgtAdeYl8gsdXG1ukfrBe0Oufow=s64",
+        "permissionDetails": [
+          {
+            "permissionType": "file",
+            "role": "writer",
+            "inherited": true
+          },
+          {
+            "permissionType": "file",
+            "role": "owner",
+            "inherited": false
+          }
+        ],
+        "deleted": false,
+        "pendingOwner": false
+      },
+      {
+        "kind": "drive#permission",
+        "id": "12802585005220779453",
+        "type": "user",
+        "emailAddress": "gltaskmanagement@gl-task-management.iam.gserviceaccount.com",
+        "role": "writer",
+        "displayName": "gltaskmanagement",
+        "photoLink": "https://lh3.googleusercontent.com/a-/ALV-UjXIe4PgLN7VDQaSwmmKLrH7KonD7zdMqR9qN9nIy3tkr4FOrO8=s64",
+        "permissionDetails": [
+          {
+            "permissionType": "file",
+            "role": "writer",
+            "inherited": true
+          }
+        ],
+        "deleted": false,
+        "pendingOwner": false
+      }
+    ]
+  }
+}

@@ -8,6 +8,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { createGoogleDoc, setDocPublicRead } from '@/lib/google-docs';
+import { createDriveFolder, MAIN_VIDEOS_FOLDER_ID, MAIN_THUMBNAIL_FOLDER_ID } from '@/lib/google-drive';
 
 export async function GET() {
     const session = await getServerSession(authOptions);
@@ -66,6 +67,16 @@ export async function POST(req: NextRequest) {
             // We continue creating the client even if Doc creation fails (it will auto-create on first sync later)
         }
 
+        // Auto-create Drive folders
+        let videoFolderId: string | null = null;
+        let thumbnailFolderId: string | null = null;
+        try {
+            videoFolderId = await createDriveFolder(name.trim(), MAIN_VIDEOS_FOLDER_ID);
+            thumbnailFolderId = await createDriveFolder(name.trim(), MAIN_THUMBNAIL_FOLDER_ID);
+        } catch (err) {
+            console.error('[clients POST] Failed to auto-create Google Drive folders', err);
+        }
+
         // Create client
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const client = await (prisma as any).client.create({
@@ -74,6 +85,8 @@ export async function POST(req: NextRequest) {
                 emoji: emoji || '🏢',
                 workspaceId: workspace.id,
                 ...(docId && { googleDocId: docId }),
+                ...(videoFolderId && { videoFolderId }),
+                ...(thumbnailFolderId && { thumbnailFolderId }),
             },
         });
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Upload, ExternalLink, PlaySquare, Settings2, Instagram, ImageIcon } from 'lucide-react';
+import { Plus, Trash2, Upload, ExternalLink, PlaySquare, Settings2, Instagram, ImageIcon, Copy, Check, X } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import styles from './ClientCalendarView.module.css';
 
@@ -123,6 +123,11 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
     const [loading, setLoading] = useState(true);
     const [visibleCols, setVisibleCols] = useState<Record<string, boolean>>(DEFAULT_COLS);
     const [showColMenu, setShowColMenu] = useState(false);
+    
+    // Upload state
+    const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+    const [activeUploads, setActiveUploads] = useState<Record<string, XMLHttpRequest>>({});
+    const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
     useEffect(() => {
         fetchData();
@@ -246,49 +251,117 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
         }
     };
 
+    const handleCopy = (link: string) => {
+        navigator.clipboard.writeText(link);
+        setCopiedLink(link);
+        setTimeout(() => setCopiedLink(null), 2000);
+    };
+
+    const cancelUpload = (uploadKey: string) => {
+        if (activeUploads[uploadKey]) {
+            activeUploads[uploadKey].abort();
+        }
+    };
+
+    const uploadFileWithProgress = (
+        url: string,
+        file: File,
+        uploadKey: string,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onSuccess: (data: any) => void
+    ) => {
+        const xhr = new XMLHttpRequest();
+        setActiveUploads(prev => ({ ...prev, [uploadKey]: xhr }));
+        setUploadProgress(prev => ({ ...prev, [uploadKey]: 0 }));
+
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+                const percentComplete = Math.round((e.loaded / e.total) * 100);
+                setUploadProgress(prev => ({ ...prev, [uploadKey]: percentComplete }));
+            }
+        };
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    onSuccess(data);
+                } catch (err) {
+                    console.error('Failed to parse response', err);
+                    fetchData(); // fallback
+                }
+            } else {
+                console.error('Upload failed with status', xhr.status);
+                fetchData();
+            }
+            setUploadProgress(prev => { const n = {...prev}; delete n[uploadKey]; return n; });
+            setActiveUploads(prev => { const n = {...prev}; delete n[uploadKey]; return n; });
+        };
+
+        xhr.onerror = () => {
+            console.error('Upload failed due to network error');
+            setUploadProgress(prev => { const n = {...prev}; delete n[uploadKey]; return n; });
+            setActiveUploads(prev => { const n = {...prev}; delete n[uploadKey]; return n; });
+            fetchData();
+        };
+
+        xhr.onabort = () => {
+            console.log(`Upload ${uploadKey} aborted`);
+            setUploadProgress(prev => { const n = {...prev}; delete n[uploadKey]; return n; });
+            setActiveUploads(prev => { const n = {...prev}; delete n[uploadKey]; return n; });
+            // Revert placeholder state
+            fetchData();
+        };
+
+        xhr.open('POST', url, true);
+        const formData = new FormData();
+        formData.append('file', file);
+        xhr.send(formData);
+    };
+
+    const deleteMedia = async (rowId: string, type: 'video' | 'thumbnail') => {
+        if (!page?.clientId) return;
+        if (!confirm(`Are you sure you want to delete this ${type} from Google Drive?`)) return;
+        
+        try {
+            const res = await fetch(`/api/clients/${page.clientId}/calendar/${rowId}/delete-${type}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                if (type === 'video') {
+                     setRows(prev => prev.map(r => r.id === rowId ? { ...r, driveLink: null } : r));
+                } else {
+                     setRows(prev => prev.map(r => r.id === rowId ? { ...r, thumbnail: null } : r));
+                }
+            } else {
+                alert('Delete failed');
+            }
+        } catch (e) {
+            console.error('Delete failed', e);
+        }
+    };
+
     const handleThumbnailUpload = async (rowId: string, file: File) => {
         if (!page?.clientId) return;
         setRows(prev => prev.map(r => r.id === rowId ? { ...r, thumbnail: 'uploading...' } : r));
-        const formData = new FormData();
-        formData.append('file', file);
-        try {
-            const res = await fetch(`/api/clients/${page.clientId}/calendar/${rowId}/upload-thumbnail`, {
-                method: 'POST',
-                body: formData
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setRows(prev => prev.map(r => r.id === rowId ? { ...r, thumbnail: data.thumbnail } : r));
-            } else {
-                fetchData();
-            }
-        } catch (err) {
-            console.error('Upload failed', err);
-            fetchData();
-        }
+        uploadFileWithProgress(
+            `/api/clients/${page.clientId}/calendar/${rowId}/upload-thumbnail`,
+            file,
+            `${rowId}-thumb`,
+            (data) => setRows(prev => prev.map(r => r.id === rowId ? { ...r, thumbnail: data.thumbnail } : r))
+        );
     };
 
     const handleVideoUpload = async (rowId: string, e: React.ChangeEvent<HTMLInputElement>) => {
         if (!page?.clientId || !e.target.files || e.target.files.length === 0) return;
         const file = e.target.files[0];
         setRows(prev => prev.map(r => r.id === rowId ? { ...r, driveLink: 'uploading...' } : r));
-        const formData = new FormData();
-        formData.append('file', file);
-        try {
-            const res = await fetch(`/api/clients/${page.clientId}/calendar/${rowId}/upload-video`, {
-                method: 'POST',
-                body: formData
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setRows(prev => prev.map(r => r.id === rowId ? { ...r, driveLink: data.driveLink } : r));
-            } else {
-                fetchData();
-            }
-        } catch (err) {
-            console.error('Upload failed', err);
-            fetchData();
-        }
+        uploadFileWithProgress(
+            `/api/clients/${page.clientId}/calendar/${rowId}/upload-video`,
+            file,
+            `${rowId}-video`,
+            (data) => setRows(prev => prev.map(r => r.id === rowId ? { ...r, driveLink: data.driveLink } : r))
+        );
     };
 
     const toggleColumn = async (colKey: string) => {
@@ -393,8 +466,8 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                             {visibleCols.edit && <th style={{ width: '110px' }}>Edit</th>}
                             {visibleCols.editor && <th style={{ width: '120px' }}>Editor</th>}
                             {visibleCols.caption && <th style={{ width: '200px' }}>Caption</th>}
-                            {visibleCols.video && <th style={{ width: '120px' }}>Video</th>}
-                            {visibleCols.thumbnail && <th style={{ width: '120px' }}>Thumbnail</th>}
+                            {visibleCols.video && <th style={{ width: '220px' }}>Video</th>}
+                            {visibleCols.thumbnail && <th style={{ width: '220px' }}>Thumbnail</th>}
                             {visibleCols.approved && <th style={{ width: '150px' }}>Approved</th>}
                             {visibleCols.socials && <th style={{ width: '80px' }}>Socials</th>}
                         </tr>
@@ -536,11 +609,29 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                                     {visibleCols.video && (
                                         <td className={styles.cell}>
                                             {row.driveLink === 'uploading...' ? (
-                                                <span className={styles.uploadingText}>Uploading...</span>
+                                                <div className={styles.uploadContainer}>
+                                                    <div className={styles.progressHeader}>
+                                                        <span>{uploadProgress[`${row.id}-video`] || 0}%</span>
+                                                        <button className={styles.cancelBtn} onClick={() => cancelUpload(`${row.id}-video`)}>
+                                                            <X size={12} /> Cancel
+                                                        </button>
+                                                    </div>
+                                                    <div className={styles.progressBar}>
+                                                        <div className={styles.progressBarFill} style={{ width: `${uploadProgress[`${row.id}-video`] || 0}%` }} />
+                                                    </div>
+                                                </div>
                                             ) : row.driveLink ? (
-                                                <a href={row.driveLink} target="_blank" rel="noopener noreferrer" className={styles.driveLinkBtn}>
-                                                    <PlaySquare size={14} /> Video
-                                                </a>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                    <a href={row.driveLink} target="_blank" rel="noopener noreferrer" className={styles.driveLinkBtn} style={{ flex: 1 }}>
+                                                        <PlaySquare size={14} /> <span className={styles.fileNameStr}>File</span>
+                                                    </a>
+                                                    <button className={styles.actionBtn} onClick={() => handleCopy(row.driveLink!)} title="Copy Link">
+                                                        {copiedLink === row.driveLink ? <Check size={14} color="#16a34a" /> : <Copy size={14} />}
+                                                    </button>
+                                                    <button className={styles.actionBtn} onClick={() => deleteMedia(row.id, 'video')} title="Delete from Drive">
+                                                        <Trash2 size={14} color="#ef4444" />
+                                                    </button>
+                                                </div>
                                             ) : (
                                                 <label className={styles.uploadBtn}>
                                                     <Upload size={14} /> Upload
@@ -557,11 +648,29 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                                     {visibleCols.thumbnail && (
                                         <td className={styles.cell}>
                                             {row.thumbnail === 'uploading...' ? (
-                                                <span className={styles.uploadingText}>Uploading...</span>
+                                                <div className={styles.uploadContainer}>
+                                                    <div className={styles.progressHeader}>
+                                                        <span>{uploadProgress[`${row.id}-thumb`] || 0}%</span>
+                                                        <button className={styles.cancelBtn} onClick={() => cancelUpload(`${row.id}-thumb`)}>
+                                                            <X size={12} /> Cancel
+                                                        </button>
+                                                    </div>
+                                                    <div className={styles.progressBar}>
+                                                        <div className={styles.progressBarFill} style={{ width: `${uploadProgress[`${row.id}-thumb`] || 0}%` }} />
+                                                    </div>
+                                                </div>
                                             ) : row.thumbnail ? (
-                                                <a href={row.thumbnail} target="_blank" rel="noopener noreferrer" className={styles.driveLinkBtn}>
-                                                    <ImageIcon size={14} /> View
-                                                </a>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                    <a href={row.thumbnail} target="_blank" rel="noopener noreferrer" className={styles.driveLinkBtn} style={{ flex: 1 }}>
+                                                        <ImageIcon size={14} /> <span className={styles.fileNameStr}>Image</span>
+                                                    </a>
+                                                    <button className={styles.actionBtn} onClick={() => handleCopy(row.thumbnail!)} title="Copy Link">
+                                                        {copiedLink === row.thumbnail ? <Check size={14} color="#16a34a" /> : <Copy size={14} />}
+                                                    </button>
+                                                    <button className={styles.actionBtn} onClick={() => deleteMedia(row.id, 'thumbnail')} title="Delete from Drive">
+                                                        <Trash2 size={14} color="#ef4444" />
+                                                    </button>
+                                                </div>
                                             ) : (
                                                 <label className={styles.uploadBtn}>
                                                     <Upload size={14} /> Upload

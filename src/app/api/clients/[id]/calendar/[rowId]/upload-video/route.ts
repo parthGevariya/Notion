@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { uploadToGoogleDrive } from '@/lib/google-drive';
 
 type RouteParams = { params: Promise<{ id: string, rowId: string }> };
 
@@ -12,17 +13,23 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        // 1. Verify row exists
+        // 1. Verify row and client exist
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const row = await (prisma as any).calendarRow.findUnique({
             where: { id: rowId },
+            include: { page: { include: { client: true } } }
         });
 
-        if (!row) {
-            return NextResponse.json({ error: 'Row not found' }, { status: 404 });
+        if (!row || !row.page.client) {
+            return NextResponse.json({ error: 'Row or Client not found' }, { status: 404 });
         }
 
-        // 2. We'd normally process formData here but this is a stub
+        const client = row.page.client;
+        if (!client.videoFolderId) {
+             return NextResponse.json({ error: 'Video folder not configured for this client' }, { status: 400 });
+        }
+
+        // 2. Process formData
         const formData = await req.formData();
         const file = formData.get('file') as File | null;
 
@@ -32,25 +39,20 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
         console.log(`[drive-upload] Received file ${file.name} for row ${rowId}`);
 
-        // 3. Stub the Drive Upload Process
-        // In reality, we would call uploadToGoogleDrive(file, client.driveFolder)
-
-        // Simulating a slow upload network request
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // Mock successful Drive URL
-        const mockDriveLink = `https://drive.google.com/file/d/stub_${Date.now()}/view`;
+        // 3. Upload to Google Drive using the client's specific folder
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const driveLink = await uploadToGoogleDrive(buffer, file.name, file.type, client.videoFolderId);
 
         // 4. Update the DB with the new drive link
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const updatedRow = await (prisma as any).calendarRow.update({
             where: { id: rowId },
-            data: { driveLink: mockDriveLink },
+            data: { driveLink },
         });
 
         return NextResponse.json({
             success: true,
-            driveLink: mockDriveLink,
+            driveLink,
             row: updatedRow
         });
 

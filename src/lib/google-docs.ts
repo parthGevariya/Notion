@@ -159,7 +159,7 @@ function gdocElementToTipTap(element: docs_v1.Schema$StructuralElement): TipTapN
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 // The ID of the "Scripts" subfolder inside the company's Shared Folder
-const SCRIPTS_FOLDER_ID = '1zer4MuB3A8HM0pBJQC11E_uJqIyc6QpF';
+const SCRIPTS_FOLDER_ID = '1vVsFoAuhdzqQ7fTmky8svrKAQsh-wj5K';
 
 /**
  * Create a new Google Doc inside the company's Shared Folder.

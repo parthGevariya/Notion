@@ -172,6 +172,8 @@ model Client {
   emoji            String?  @default("🏢") // Display icon for client
   googleDocId      String?  // TODO: Google Doc ID for script sync (fill after API key)
   driveFolder      String?  // TODO: Google Drive folder ID for video uploads (fill after API key)
+  videoFolderId    String?  // Google Drive folder ID for Videos
+  thumbnailFolderId String? // Google Drive folder ID for Thumbnails
   workspaceId      String
   createPermission String   @default("manager") // "manager" | "all" — which roles can add clients
   settings         String?  // JSON: { columnVisibility: { [role]: [colId, ...] } }

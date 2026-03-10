@@ -63,16 +63,21 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
     const { id } = await params;
 
-    // Fetch client to get linked Google Doc ID before deleting
+    // Fetch client to get linked Google Doc & Drive folder IDs before deleting
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const client = await (prisma as any).client.findUnique({ where: { id }, select: { googleDocId: true } });
+    const client = await (prisma as any).client.findUnique({ where: { id }, select: { googleDocId: true, videoFolderId: true, thumbnailFolderId: true } });
 
     // Delete linked Google Doc from Drive (silently handles 404)
-    if (client?.googleDocId) {
+    if (client) {
         try {
-            await deleteFile(client.googleDocId);
+            const deletePromises = [];
+            if (client.googleDocId) deletePromises.push(deleteFile(client.googleDocId));
+            if (client.videoFolderId) deletePromises.push(deleteFile(client.videoFolderId));
+            if (client.thumbnailFolderId) deletePromises.push(deleteFile(client.thumbnailFolderId));
+            
+            await Promise.allSettled(deletePromises);
         } catch (err) {
-            console.error('[client/delete] Failed to delete Google Doc:', err);
+            console.error('[client/delete] Failed to delete Google Drive files:', err);
             // Do not block client deletion even if Drive API fails
         }
     }

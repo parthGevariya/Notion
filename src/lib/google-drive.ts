@@ -31,6 +31,36 @@ async function driveClient() {
     return google.drive({ version: 'v3', auth: getAuth() });
 }
 
+export const MAIN_VIDEOS_FOLDER_ID = '1meE0nMHQUSxQs33OY-xbWwhutgZB1X_l';
+export const MAIN_THUMBNAIL_FOLDER_ID = '1d8UPuvNdBdR69DkTmwWVySgc2GRMk7lP';
+
+/**
+ * Creates a folder inside a specified parent folder in Google Drive.
+ * @param name - The name of the new folder
+ * @param parentId - The ID of the parent folder
+ */
+export async function createDriveFolder(name: string, parentId: string): Promise<string> {
+    const drive = await driveClient();
+    const res = await drive.files.create({
+        requestBody: {
+            name,
+            mimeType: 'application/vnd.google-apps.folder',
+            parents: [parentId],
+        },
+        fields: 'id',
+    });
+    
+    // Make the folder readable by anyone with the link
+    if (res.data.id) {
+        await drive.permissions.create({
+            fileId: res.data.id,
+            requestBody: { role: 'reader', type: 'anyone' },
+        });
+    }
+
+    return res.data.id!;
+}
+
 /**
  * Upload a file to Google Drive and return its shareable link.
  * @param fileBuffer - File data
@@ -65,6 +95,14 @@ export async function uploadToGoogleDrive(
     });
 
     return res.data.webViewLink!;
+}
+
+/**
+ * Extract the file ID from a Google Drive URL.
+ */
+export function extractDriveFileId(url: string): string | null {
+    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    return match ? match[1] : null;
 }
 
 /**
