@@ -24,13 +24,22 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const parentId = searchParams.get('parentId');
         const trashed = searchParams.get('trashed') === 'true';
+        const clientId = searchParams.get('clientId');
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const whereClause: any = {
+            workspaceId: member.workspaceId,
+            isTrashed: trashed,
+        };
+
+        if (clientId) {
+            whereClause.clientId = clientId;
+        } else {
+            whereClause.parentId = parentId || null;
+        }
 
         const pages = await prisma.page.findMany({
-            where: {
-                workspaceId: member.workspaceId,
-                parentId: parentId || null,
-                isTrashed: trashed,
-            },
+            where: whereClause,
             orderBy: { position: 'asc' },
             select: {
                 id: true,

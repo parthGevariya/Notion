@@ -19,18 +19,33 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
             where: { id: rowId },
             data: {
                 date: data.date ? new Date(data.date) : data.date === null ? null : undefined,
+                postDate: data.postDate ? new Date(data.postDate) : data.postDate === null ? null : undefined,
+                shootDate: data.shootDate ? new Date(data.shootDate) : data.shootDate === null ? null : undefined,
                 title: data.title,
                 scriptId: data.scriptId,
+                scriptDetails: data.scriptDetails,
                 caption: data.caption,
                 thumbnail: data.thumbnail,
                 status: data.status,
+                shootStatus: data.shootStatus,
+                shootPersonId: data.shootPersonId,
+                editStatus: data.editStatus,
+                editorId: data.editorId,
                 assigneeId: data.assigneeId,
+                approvalStatus: data.approvalStatus,
+                approvalMsg: data.approvalMsg,
                 socialMedia: data.socialMedia,
                 position: data.position,
             },
             include: {
                 script: true,
                 assignee: {
+                    select: { id: true, name: true, avatar: true },
+                },
+                shootPerson: {
+                    select: { id: true, name: true, avatar: true },
+                },
+                editor: {
                     select: { id: true, name: true, avatar: true },
                 },
             },

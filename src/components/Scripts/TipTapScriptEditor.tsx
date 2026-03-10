@@ -114,6 +114,8 @@ export default function TipTapScriptEditor({ scriptId, initialContent,
             },
         },
         onUpdate: ({ editor: ed }) => {
+            onKeystroke?.(); // fire immediately (before debounce) so parent knows user is actively typing!
+
             const { from } = ed.state.selection;
             const textBefore = ed.state.doc.textBetween(Math.max(0, from - 1), from);
             if (textBefore !== '/') setSlashPos(null);
@@ -135,8 +137,6 @@ export default function TipTapScriptEditor({ scriptId, initialContent,
                 ed.view.dispatch(tr);
                 return;
             }
-
-            onKeystroke?.(); // fire immediately (before debounce) so parent knows user is actively typing
 
             if (saveTimer.current) clearTimeout(saveTimer.current);
             saveTimer.current = setTimeout(() => {

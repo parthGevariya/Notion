@@ -1,6 +1,6 @@
 .container {
     padding: 0 40px 100px;
-    max-width: 1400px;
+    max-width: 1600px;
 }
 
 .header {
@@ -42,6 +42,8 @@
     top: calc(100% + 8px);
     right: 0;
     width: 200px;
+    max-height: 400px;
+    overflow-y: auto;
     background: var(--bg-primary);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
@@ -77,11 +79,6 @@
     color: var(--text-primary);
 }
 
-.colMenuItem input[type="checkbox"] {
-    cursor: pointer;
-    accent-color: var(--text-primary);
-}
-
 .clientBadge {
     padding: 4px 12px;
     background: var(--bg-hover);
@@ -97,6 +94,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     background: var(--bg-primary);
+    padding-bottom: 80px; /* Space for tooltips */
 }
 
 .table {
@@ -106,13 +104,14 @@
 }
 
 .table th {
-    padding: 12px;
-    font-size: 13px;
-    font-weight: 500;
+    padding: 12px 8px;
+    font-size: 12px;
+    font-weight: 600;
     color: var(--text-secondary);
     border-bottom: 1px solid var(--border);
     border-right: 1px solid var(--border);
     background: var(--bg-hover);
+    white-space: nowrap;
 }
 
 .table td {
@@ -120,7 +119,7 @@
     border-right: 1px solid var(--border);
     padding: 0;
     position: relative;
-    height: 40px;
+    height: 44px;
 }
 
 .actionCell {
@@ -149,36 +148,29 @@
     padding: 0 8px;
 }
 
-.titleInput {
+.titleInput, .dateInput {
     width: 100%;
-    height: 100%;
+    height: 44px;
     border: none;
     background: transparent;
     color: var(--text-primary);
-    font-size: 14px;
+    font-size: 13px;
     outline: none;
+    font-family: inherit;
+    padding: 0 4px;
 }
 
 .titleInput::placeholder {
     color: var(--text-tertiary);
 }
 
-.dateInput {
-    width: 100%;
-    border: none;
-    background: transparent;
-    color: var(--text-primary);
-    font-size: 14px;
-    outline: none;
-    font-family: inherit;
-}
-
 .select {
     width: 100%;
+    height: 44px;
     border: none;
     background: transparent;
     color: var(--text-primary);
-    font-size: 14px;
+    font-size: 13px;
     outline: none;
     cursor: pointer;
 }
@@ -186,36 +178,127 @@
 .statusSelect {
     width: 100%;
     border: none;
-    padding: 4px 8px;
+    padding: 6px 8px;
     border-radius: 4px;
-    font-size: 13px;
+    font-size: 12px;
     outline: none;
     cursor: pointer;
     appearance: none;
 }
 
-.scriptCell {
+.uploadBtn {
     display: flex;
     align-items: center;
     gap: 4px;
-}
-
-.expandBtn {
-    background: transparent;
-    border: none;
-    color: var(--text-tertiary);
-    cursor: pointer;
-    padding: 4px;
-    display: flex;
-    align-items: center;
-    border-radius: var(--radius-sm);
-}
-
-.expandBtn:hover {
+    padding: 4px 8px;
     background: var(--bg-hover);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    width: 100%;
+    justify-content: center;
+}
+
+.uploadBtn:hover {
+    background: var(--bg-secondary);
     color: var(--text-primary);
 }
 
+.driveLinkBtn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: rgba(37, 99, 235, 0.1);
+    color: #3b82f6;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    text-decoration: none;
+    font-weight: 500;
+    width: 100%;
+    justify-content: center;
+}
+
+.driveLinkBtn:hover {
+    background: rgba(37, 99, 235, 0.2);
+}
+
+/* Tooltips */
+.hoverTooltipContainer {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+.hoverTooltipText {
+    visibility: hidden;
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: 10px;
+    width: 320px;
+    max-height: 400px;
+    overflow-y: auto;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    padding: 16px;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.2s, visibility 0.2s;
+    font-size: 13px;
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+.hoverTooltipContainer:hover .hoverTooltipText,
+.hoverTooltipContainer:focus-within .hoverTooltipText {
+    visibility: visible;
+    opacity: 1;
+}
+
+.hoverTooltipText h4 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+}
+
+.hoverTooltipText p {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+.directLinkBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    margin-top: 12px;
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+}
+
+.directLinkBtn:hover {
+    background: var(--bg-secondary);
+}
+
+/* Add Row */
 .addRowBtn {
     display: flex;
     align-items: center;
@@ -237,58 +320,12 @@
     color: var(--text-primary);
 }
 
-.uploadBtn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 8px;
-    background: var(--bg-hover);
-    color: var(--text-secondary);
-    border-radius: var(--radius-sm);
-    font-size: 13px;
-    cursor: pointer;
-    border: 1px solid var(--border);
-    white-space: nowrap;
-}
-
-.uploadBtn:hover {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-}
-
 .uploadingText {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--text-tertiary);
     font-style: italic;
-}
-
-.driveLinkBtn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 8px;
-    background: rgba(37, 99, 235, 0.1);
-    color: #3b82f6;
-    border-radius: var(--radius-sm);
-    font-size: 13px;
-    text-decoration: none;
-    font-weight: 500;
-}
-
-.driveLinkBtn:hover {
-    background: rgba(37, 99, 235, 0.2);
-}
-
-.loading {
-    padding: 40px;
-    color: var(--text-tertiary);
-    font-size: 15px;
-}
-
-/* Socials Column & Tooltip */
-.tooltipContainer {
-    position: relative;
-    display: inline-block;
+    width: 100%;
+    text-align: center;
 }
 
 .socialBtnDisabled {
@@ -304,30 +341,52 @@
     opacity: 0.6;
 }
 
-.tooltipText {
-    visibility: hidden;
-    width: max-content;
-    background-color: var(--text-primary);
-    color: var(--bg-primary);
-    text-align: center;
-    border-radius: var(--radius-sm);
-    padding: 4px 8px;
-    font-size: 11px;
-    font-weight: 500;
-
-    /* Position the tooltip above the button */
-    position: absolute;
-    z-index: 10;
-    bottom: 125%;
-    left: 50%;
-    transform: translateX(-50%);
-
-    /* Fade in effect */
-    opacity: 0;
-    transition: opacity 0.2s;
+/* Approvals */
+.approvalContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 0;
+    width: 100%;
+    height: 100%;
+    justify-content: center;
 }
 
-.tooltipContainer:hover .tooltipText {
-    visibility: visible;
-    opacity: 1;
+.approvalTextarea {
+    width: 100%;
+    height: 40px;
+    resize: vertical;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 11px;
+    padding: 4px;
+    outline: none;
+    font-family: inherit;
+}
+
+.loading {
+    padding: 40px;
+    color: var(--text-tertiary);
+    font-size: 15px;
+}
+
+.captionPopupTextarea {
+    width: 100%;
+    min-height: 80px;
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 13px;
+    resize: none;
+    outline: none;
+    padding: 0;
+    margin: 0;
+}
+.captionPopupTextarea::placeholder {
+    color: var(--text-tertiary);
 }

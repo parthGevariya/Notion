@@ -83,6 +83,7 @@ export default function ScriptPageView({ pageId, clientId, clientName }: { pageI
     const lastPushedHashRef = useRef<string | null>(null);
     const isDirtyRef = useRef(false);
     const isEditorFocusedRef = useRef(false);
+    const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const lastRevisionIdRef = useRef<string | null>(null);
     const lastSyncedVersionRef = useRef<string | null>(null); // Drive 'version' integer — most reliable change detector
     const lastForcePullAtRef = useRef<number>(0);             // timestamp of last pull attempt — used for 15s force-pull fallback
@@ -120,18 +121,18 @@ export default function ScriptPageView({ pageId, clientId, clientName }: { pageI
     // ── Push to Google Doc ─────────────────────────────────────────────────────
     const pushToGoogleDoc = useCallback(async (force = false) => {
         const script = masterScriptRef.current;
-        if (!script?.content) return;
+        if (!script?.content) { setSyncState('idle'); return; }
 
         // Skip if content hasn't changed since last push
         const hash = script.content;
         
         // Prevent spurious overwrites if we haven't loaded the initial hash yet
-        if (lastPushedHashRef.current === null) return;
+        if (lastPushedHashRef.current === null) { setSyncState('idle'); return; }
         
         // Block pushes if there are no genuine user edits
-        if (!isDirtyRef.current && !force) return;
+        if (!isDirtyRef.current && !force) { setSyncState('idle'); return; }
 
-        if (!force && hash === lastPushedHashRef.current) return;
+        if (!force && hash === lastPushedHashRef.current) { setSyncState('idle'); return; }
 
         setSyncState('uploading');
         try {
@@ -179,6 +180,7 @@ export default function ScriptPageView({ pageId, clientId, clientName }: { pageI
                 isEditorFocusedRef.current = false; // TipTap doesn't fire onBlur on unmount — reset manually
                 lastTypedAtRef.current = 0;          // prevent stale idle timer from triggering auto-push on next poll
                 if (data.revisionId) lastRevisionIdRef.current = data.revisionId;
+                if (data.docVersion) lastSyncedVersionRef.current = data.docVersion;
                 setLastSyncedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
                 setSyncState('synced');
                 setSyncVersion(v => v + 1);
@@ -217,23 +219,28 @@ export default function ScriptPageView({ pageId, clientId, clientName }: { pageI
 
             let needsPull = false;
 
-            // Condition 0 (PRIMARY): Drive 'version' changed — most reliable, no propagation delay
-            // lastSyncedVersionRef is null until first push/pull; after that, any increment means external edit
-            if (data.docVersion && lastSyncedVersionRef.current !== null && data.docVersion !== lastSyncedVersionRef.current) {
-                console.log('[SyncDebug] version changed:', lastSyncedVersionRef.current, '->', data.docVersion);
-                needsPull = true;
-            }
+            // CRITICAL: NEVER pull while the user has local unsaved typing changes!
+            // If we push, Google Drive increments `version`. A fast poll might see this new version
+            // and assume it's external, pulling it down and overwriting the user's continued typing.
+            // If the user's editor is dirty, we wait for them to pause typing (3s idle) so auto-push can run.
+            if (!isDirtyRef.current) {
+                // Condition 0 (PRIMARY): Drive 'version' changed — most reliable, no propagation delay
+                if (data.docVersion && lastSyncedVersionRef.current !== null && data.docVersion !== lastSyncedVersionRef.current) {
+                    console.log('[SyncDebug] version changed:', lastSyncedVersionRef.current, '->', data.docVersion);
+                    needsPull = true;
+                }
 
-            // Condition 1: Revision ID changed during active session (fallback)
-            if (!needsPull && data.revisionId && data.revisionId !== lastRevisionIdRef.current && lastRevisionIdRef.current !== null) {
-                needsPull = true;
-            }
+                // Condition 1: Revision ID changed during active session (fallback)
+                if (!needsPull && data.revisionId && data.revisionId !== lastRevisionIdRef.current && lastRevisionIdRef.current !== null) {
+                    needsPull = true;
+                }
 
-            // Condition 2: modifiedTime newer than lastSyncedAt (fallback if version/revision not available)
-            if (!needsPull && data.docModifiedAt && data.lastSyncedAt) {
-                const docTime = new Date(data.docModifiedAt).getTime();
-                const dbTime = new Date(data.lastSyncedAt).getTime();
-                if (docTime > dbTime) needsPull = true;
+                // Condition 2: modifiedTime newer than lastSyncedAt (fallback if version/revision not available)
+                if (!needsPull && data.docModifiedAt && data.lastSyncedAt) {
+                    const docTime = new Date(data.docModifiedAt).getTime();
+                    const dbTime = new Date(data.lastSyncedAt).getTime();
+                    if (docTime > dbTime) needsPull = true;
+                }
             }
 
             // Initialize refs on first poll
@@ -333,10 +340,17 @@ export default function ScriptPageView({ pageId, clientId, clientName }: { pageI
 
     // On editor blur
     const handleEditorBlur = useCallback(() => {
-        isEditorFocusedRef.current = false;
-        // We do NOT aggressively push to Google Docs on blur anymore.
-        // It causes race conditions if the user clicks the 'Sync Doc' button (which triggers a blur).
-        // The 30s idle timer or 60s visibility checker handles passive background saves.
+        blurTimeoutRef.current = setTimeout(() => {
+            isEditorFocusedRef.current = false;
+            // We do NOT aggressively push to Google Docs on blur anymore.
+            // It causes race conditions if the user clicks the 'Sync Doc' button (which triggers a blur).
+            // The 30s idle timer or 60s visibility checker handles passive background saves.
+        }, 100); // 100ms debounce to ignore synthetic blur/focus flickers from TipTap node updates
+    }, []);
+
+    const handleEditorFocus = useCallback(() => {
+        if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
+        isEditorFocusedRef.current = true;
     }, []);
 
     // TOC intersection observer
@@ -454,7 +468,7 @@ export default function ScriptPageView({ pageId, clientId, clientName }: { pageI
                                 initialContent={masterScript.content || ''}
                                 onChange={handleContentChange}
                                 onBlur={handleEditorBlur}
-                                onFocus={() => { isEditorFocusedRef.current = true; }}
+                                onFocus={handleEditorFocus}
                                 onKeystroke={() => { lastTypedAtRef.current = Date.now(); }}
                                 readOnly={false}
                             />

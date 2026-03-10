@@ -32,6 +32,12 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
                 assignee: {
                     select: { id: true, name: true, avatar: true },
                 },
+                shootPerson: {
+                    select: { id: true, name: true, avatar: true },
+                },
+                editor: {
+                    select: { id: true, name: true, avatar: true },
+                },
             },
         });
 
@@ -78,12 +84,18 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
                 assignee: {
                     select: { id: true, name: true, avatar: true },
                 },
+                shootPerson: {
+                    select: { id: true, name: true, avatar: true },
+                },
+                editor: {
+                    select: { id: true, name: true, avatar: true },
+                },
             },
         });
 
         return NextResponse.json(newRow, { status: 201 });
-    } catch (e) {
+    } catch (e: any) {
         console.error('[calendar POST]', e);
-        return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+        return NextResponse.json({ error: e.message || 'Internal error', stack: e.stack }, { status: 500 });
     }
 }

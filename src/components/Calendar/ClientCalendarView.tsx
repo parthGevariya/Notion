@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Video, CheckCircle2, Clock, Upload, ExternalLink, PlaySquare, Settings2, Instagram } from 'lucide-react';
+import { Plus, Trash2, Upload, ExternalLink, PlaySquare, Settings2, Instagram, ImageIcon } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import PopupPreview from './PopupPreview';
 import styles from './ClientCalendarView.module.css';
 
 interface User {
@@ -12,55 +11,105 @@ interface User {
     avatar: string | null;
 }
 
-interface Script {
+interface ScriptSection {
     id: string;
-    scriptNumber: number;
     title: string;
-    content: string | null;
+    previewText: string;
 }
 
 interface CalendarRow {
     id: string;
     date: Date | null;
+    postDate: Date | null;
+    shootDate: Date | null;
     title: string;
-    scriptId: string | null;
+    scriptDetails: string | null;
     caption: string | null;
     thumbnail: string | null;
-    status: string; // idea, scripted, shooting, editing, ready, posted
-    assigneeId: string | null;
+    shootStatus: string;
+    shootPersonId: string | null;
+    editStatus: string;
+    editorId: string | null;
+    approvalStatus: string | null;
+    approvalMsg: string | null;
     driveLink: string | null;
     socialMedia: string | null;
     position: number;
-    script?: Script | null;
-    assignee?: User | null;
+    shootPerson?: User | null;
+    editor?: User | null;
 }
 
 interface PageData {
     id: string;
     title: string;
     clientId: string | null;
+    workspaceId: string;
     client?: { id: string; name: string; settings: string | null } | null;
 }
 
 const DEFAULT_COLS = {
-    date: true,
-    title: true,
+    sr: true,
+    postDate: true,
+    shootDate: true,
+    topic: true,
     script: true,
-    status: true,
-    assignee: true,
-    media: true,
+    shoot: true,
+    person: true,
+    edit: true,
+    editor: true,
     caption: true,
+    video: true,
+    thumbnail: true,
+    approved: true,
     socials: true,
 };
 
-const STATUS_OPTIONS = [
-    { value: 'idea', label: 'Idea', color: 'var(--text-tertiary)', bg: 'var(--bg-hover)' },
-    { value: 'scripted', label: 'Scripted', color: '#d97706', bg: '#fef3c7' }, // Amber
-    { value: 'shooting', label: 'Shooting', color: '#2563eb', bg: '#dbeafe' }, // Blue
-    { value: 'editing', label: 'Editing', color: '#9333ea', bg: '#f3e8ff' }, // Purple
-    { value: 'ready', label: 'Ready', color: '#16a34a', bg: '#dcfce7' }, // Green
-    { value: 'posted', label: 'Posted', color: '#4b5563', bg: '#f3f4f6' }, // Gray
+const SHOOT_EDIT_STATUS = [
+    { value: 'pending', label: 'Pending', color: 'var(--text-tertiary)', bg: 'var(--bg-hover)' },
+    { value: 'happening', label: 'Happening', color: '#2563eb', bg: '#dbeafe' },
+    { value: 'done', label: 'Done', color: '#16a34a', bg: '#dcfce7' },
 ];
+
+const APPROVAL_STATUS = [
+    { value: '', label: 'Not Sent', color: 'var(--text-tertiary)', bg: 'transparent' },
+    { value: 'Approved', label: 'Approved', color: '#16a34a', bg: '#dcfce7' },
+    { value: 'Changes', label: 'Changes', color: '#ef4444', bg: '#fee2e2' },
+];
+
+function parseScriptsFromDoc(doc: any): ScriptSection[] {
+    if (!doc || !doc.content || !Array.isArray(doc.content)) return [];
+    
+    const sections: any[] = [];
+    let currentSection: any = null;
+    
+    const getTextFromNode = (node: any): string => {
+        if (node.text) return node.text;
+        if (node.content && Array.isArray(node.content)) {
+            return node.content.map(getTextFromNode).join('');
+        }
+        if (node.type === 'paragraph') return '\n';
+        return '';
+    };
+
+    for (const node of doc.content) {
+        if (node.type === 'heading' && node.attrs?.level === 1) {
+            const text = getTextFromNode(node).trim();
+            currentSection = { id: text, title: text || 'Untitled', contentBlocks: [] };
+            sections.push(currentSection);
+        } else if (currentSection) {
+            currentSection.contentBlocks.push(node);
+        }
+    }
+    
+    return sections.map((sec, idx) => {
+        const previewText = sec.contentBlocks.map(getTextFromNode).filter(Boolean).join('\n').trim().substring(0, 500);
+        return {
+           id: sec.id || `Untitled-${idx}`,
+           title: sec.title || `Untitled-${idx}`,
+           previewText: previewText || 'No content'
+        };
+    });
+}
 
 export default function ClientCalendarView({ pageId }: { pageId: string }) {
     const { data: session } = useSession();
@@ -68,17 +117,12 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
 
     const [page, setPage] = useState<PageData | null>(null);
     const [rows, setRows] = useState<CalendarRow[]>([]);
-    const [scripts, setScripts] = useState<Script[]>([]);
+    const [scriptSections, setScriptSections] = useState<ScriptSection[]>([]);
+    const [scriptPageId, setScriptPageId] = useState<string | null>(null);
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [visibleCols, setVisibleCols] = useState<Record<string, boolean>>(DEFAULT_COLS);
     const [showColMenu, setShowColMenu] = useState(false);
-
-    // Track which cell is currently focused for inline editing
-    const [editingCell, setEditingCell] = useState<{ rowId: string, field: string } | null>(null);
-
-    // Popup state
-    const [popupContent, setPopupContent] = useState<{ type: 'script' | 'caption' | 'thumbnail', content: any } | null>(null);
 
     useEffect(() => {
         fetchData();
@@ -87,7 +131,6 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
     const fetchData = async () => {
         setLoading(true);
         try {
-            // 1. Fetch page to get clientId
             const pageRes = await fetch(`/api/pages/${pageId}`);
             if (!pageRes.ok) return;
             const pageData = await pageRes.json();
@@ -95,7 +138,6 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
 
             if (!pageData.clientId) return;
 
-            // Load saved settings
             if (pageData.client?.settings) {
                 try {
                     const parsed = JSON.parse(pageData.client.settings);
@@ -105,28 +147,48 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                 } catch (e) { console.error('Failed to parse client settings', e); }
             }
 
-            // 2. Fetch rows
             const rowsRes = await fetch(`/api/clients/${pageData.clientId}/calendar`);
             if (rowsRes.ok) {
-                const rowsData = await rowsRes.json();
-                setRows(rowsData);
+                setRows(await rowsRes.json());
             }
 
-            // 3. Fetch available scripts for this client
-            // The scripts live under the client's Script page. We'll fetch all pages for the client, find the script page, and get its scripts
             const clientPagesRes = await fetch(`/api/pages?clientId=${pageData.clientId}`);
+            console.log('clientPagesRes status:', clientPagesRes.status);
             if (clientPagesRes.ok) {
                 const clientPages = await clientPagesRes.json();
+                console.log('clientPages data:', clientPages);
                 const scriptPage = clientPages.find((p: any) => p.pageType === 'script_page');
                 if (scriptPage) {
+                    setScriptPageId(scriptPage.id);
                     const scriptsRes = await fetch(`/api/pages/${scriptPage.id}/scripts`);
+                    console.log('scriptsRes status:', scriptsRes.status);
                     if (scriptsRes.ok) {
-                        setScripts(await scriptsRes.json());
+                        const scripts = await scriptsRes.json();
+                        console.log('scripts data:', scripts);
+                        let allSections: ScriptSection[] = [];
+                        for (const script of scripts) {
+                            if (script.content) {
+                                try {
+                                    const doc = JSON.parse(script.content);
+                                    const sections = parseScriptsFromDoc(doc);
+                                    console.log(`Parsed ${sections.length} headers for script ${script.scriptNumber}`);
+                                    const prefixedSections = sections.map(sec => ({
+                                        ...sec,
+                                        title: `[Script ${script.scriptNumber}] ${sec.title}`
+                                    }));
+                                    allSections = [...allSections, ...prefixedSections];
+                                } catch (e) {
+                                    console.error('Failed to parse tip tap doc for script', script.id);
+                                }
+                            }
+                        }
+                        setScriptSections(allSections);
                     }
+                } else {
+                    console.warn('No script_page found for client', pageData.clientId);
                 }
             }
 
-            // 4. Fetch workspace users (for assignees)
             const usersRes = await fetch('/api/users');
             if (usersRes.ok) {
                 setUsers(await usersRes.json());
@@ -148,6 +210,9 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
             if (res.ok) {
                 const newRow = await res.json();
                 setRows(prev => [...prev, newRow]);
+            } else {
+                const err = await res.text();
+                alert('Add Row failed: ' + err);
             }
         } catch (e) {
             console.error('Failed to add row', e);
@@ -156,23 +221,20 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
 
     const handleDeleteRow = async (rowId: string) => {
         if (!page?.clientId) return;
-        setRows(prev => prev.filter(r => r.id !== rowId)); // Optimistic UI
+        setRows(prev => prev.filter(r => r.id !== rowId));
         try {
             await fetch(`/api/clients/${page.clientId}/calendar/${rowId}`, {
                 method: 'DELETE'
             });
         } catch (e) {
             console.error('Failed to delete row', e);
-            fetchData(); // Revert on failure
+            fetchData();
         }
     };
 
     const updateRow = async (rowId: string, field: keyof CalendarRow, value: any) => {
         if (!page?.clientId) return;
-
-        // Optimistic UI
         setRows(prev => prev.map(r => r.id === rowId ? { ...r, [field]: value } : r));
-
         try {
             await fetch(`/api/clients/${page.clientId}/calendar/${rowId}`, {
                 method: 'PATCH',
@@ -184,31 +246,48 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
         }
     };
 
-    const handleFileUpload = async (rowId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!page?.clientId || !e.target.files || e.target.files.length === 0) return;
-        const file = e.target.files[0];
-
-        // Show optimistic loading state in UI
-        setRows(prev => prev.map(r => r.id === rowId ? { ...r, driveLink: 'uploading...' } : r));
-
+    const handleThumbnailUpload = async (rowId: string, file: File) => {
+        if (!page?.clientId) return;
+        setRows(prev => prev.map(r => r.id === rowId ? { ...r, thumbnail: 'uploading...' } : r));
         const formData = new FormData();
         formData.append('file', file);
+        try {
+            const res = await fetch(`/api/clients/${page.clientId}/calendar/${rowId}/upload-thumbnail`, {
+                method: 'POST',
+                body: formData
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setRows(prev => prev.map(r => r.id === rowId ? { ...r, thumbnail: data.thumbnail } : r));
+            } else {
+                fetchData();
+            }
+        } catch (err) {
+            console.error('Upload failed', err);
+            fetchData();
+        }
+    };
 
+    const handleVideoUpload = async (rowId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!page?.clientId || !e.target.files || e.target.files.length === 0) return;
+        const file = e.target.files[0];
+        setRows(prev => prev.map(r => r.id === rowId ? { ...r, driveLink: 'uploading...' } : r));
+        const formData = new FormData();
+        formData.append('file', file);
         try {
             const res = await fetch(`/api/clients/${page.clientId}/calendar/${rowId}/upload-video`, {
                 method: 'POST',
                 body: formData
             });
-
             if (res.ok) {
                 const data = await res.json();
                 setRows(prev => prev.map(r => r.id === rowId ? { ...r, driveLink: data.driveLink } : r));
             } else {
-                fetchData(); // Revert on failure
+                fetchData();
             }
         } catch (err) {
             console.error('Upload failed', err);
-            fetchData(); // Revert on failure
+            fetchData();
         }
     };
 
@@ -216,19 +295,14 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
         if (!page?.clientId) return;
         const newCols = { ...visibleCols, [colKey]: !visibleCols[colKey] };
         setVisibleCols(newCols);
-
-        // Save to Client settings JSON
         try {
             const currentSettings = page.client?.settings ? JSON.parse(page.client.settings) : {};
             currentSettings.columnVisibility = newCols;
-
             await fetch(`/api/clients/${page.clientId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ settings: JSON.stringify(currentSettings) })
             });
-
-            // Update local page client obj so subsequent saves don't overwrite
             setPage(prev => prev ? { ...prev, client: { ...prev.client!, settings: JSON.stringify(currentSettings) } } : null);
         } catch (err) {
             console.error('Failed to save settings', err);
@@ -236,6 +310,40 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
     };
 
     if (loading) return <div className={styles.loading}>Loading Calendar...</div>;
+
+    const renderUserDropdown = (row: CalendarRow, field: 'shootPersonId' | 'editorId', statusField: 'shootStatus' | 'editStatus') => {
+        const status = SHOOT_EDIT_STATUS.find(s => s.value === row[statusField]) || SHOOT_EDIT_STATUS[0];
+        const value = row[field] || '';
+        return (
+            <select
+                value={value}
+                onChange={(e) => updateRow(row.id, field, e.target.value || null)}
+                className={styles.select}
+                style={{ color: value ? status.color : 'var(--text-tertiary)', fontWeight: value ? 600 : 'normal' }}
+            >
+                <option value="">Unassigned</option>
+                {users.map(u => (
+                    <option key={u.id} value={u.id} style={{ color: 'var(--text-primary)' }}>{u.name}</option>
+                ))}
+            </select>
+        );
+    };
+
+    const renderStatusDropdown = (row: CalendarRow, field: 'shootStatus' | 'editStatus') => {
+        const currentStatus = SHOOT_EDIT_STATUS.find(s => s.value === row[field]) || SHOOT_EDIT_STATUS[0];
+        return (
+            <select
+                value={row[field]}
+                onChange={(e) => updateRow(row.id, field, e.target.value)}
+                style={{ color: currentStatus.color, backgroundColor: currentStatus.bg, fontWeight: 600 }}
+                className={styles.statusSelect}
+            >
+                {SHOOT_EDIT_STATUS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+            </select>
+        );
+    };
 
     return (
         <div className={styles.container}>
@@ -247,10 +355,7 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
 
                 {(role === 'manager' || role === 'owner') && (
                     <div style={{ position: 'relative', marginLeft: 'auto' }}>
-                        <button
-                            className={styles.colToggleBtn}
-                            onClick={() => setShowColMenu(!showColMenu)}
-                        >
+                        <button className={styles.colToggleBtn} onClick={() => setShowColMenu(!showColMenu)}>
                             <Settings2 size={16} /> Columns
                         </button>
 
@@ -264,7 +369,7 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                                             checked={!!visibleCols[col]}
                                             onChange={() => toggleColumn(col)}
                                         />
-                                        {col.charAt(0).toUpperCase() + col.slice(1)}
+                                        {col === 'sr' ? 'Sr. No' : col.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
                                     </label>
                                 ))}
                             </div>
@@ -278,19 +383,26 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                     <thead>
                         <tr>
                             <th style={{ width: '40px' }}></th>
-                            {visibleCols.date && <th style={{ width: '150px' }}>Date</th>}
-                            {visibleCols.title && <th style={{ width: '250px' }}>Idea / Title</th>}
+                            {visibleCols.sr && <th style={{ width: '60px' }}>Sr. No</th>}
+                            {visibleCols.postDate && <th style={{ width: '130px' }}>Post Date</th>}
+                            {visibleCols.shootDate && <th style={{ width: '130px' }}>Shoot Date</th>}
+                            {visibleCols.topic && <th style={{ width: '200px' }}>Topic</th>}
                             {visibleCols.script && <th style={{ width: '200px' }}>Script</th>}
-                            {visibleCols.status && <th style={{ width: '120px' }}>Status</th>}
-                            {visibleCols.assignee && <th style={{ width: '150px' }}>Assignee</th>}
-                            {visibleCols.media && <th style={{ width: '150px' }}>Video / Media</th>}
-                            {visibleCols.caption && <th style={{ width: '150px' }}>Caption</th>}
-                            {visibleCols.socials && <th style={{ width: '100px' }}>Socials</th>}
+                            {visibleCols.shoot && <th style={{ width: '110px' }}>Shoot</th>}
+                            {visibleCols.person && <th style={{ width: '120px' }}>Person</th>}
+                            {visibleCols.edit && <th style={{ width: '110px' }}>Edit</th>}
+                            {visibleCols.editor && <th style={{ width: '120px' }}>Editor</th>}
+                            {visibleCols.caption && <th style={{ width: '200px' }}>Caption</th>}
+                            {visibleCols.video && <th style={{ width: '120px' }}>Video</th>}
+                            {visibleCols.thumbnail && <th style={{ width: '120px' }}>Thumbnail</th>}
+                            {visibleCols.approved && <th style={{ width: '150px' }}>Approved</th>}
+                            {visibleCols.socials && <th style={{ width: '80px' }}>Socials</th>}
                         </tr>
                     </thead>
                     <tbody>
-                        {rows.map(row => {
-                            const currentStatus = STATUS_OPTIONS.find(s => s.value === row.status) || STATUS_OPTIONS[0];
+                        {rows.map((row, index) => {
+                            const selectedScript = scriptSections.find(s => s.id === row.scriptDetails);
+                            const currentApproval = APPROVAL_STATUS.find(s => s.value === (row.approvalStatus || '')) || APPROVAL_STATUS[0];
 
                             return (
                                 <tr key={row.id}>
@@ -300,150 +412,208 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                                         </button>
                                     </td>
 
-                                    {/* Date */}
-                                    {visibleCols.date && (
+                                    {visibleCols.sr && (
+                                        <td className={styles.cell} style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>
+                                            {index + 1}
+                                        </td>
+                                    )}
+
+                                    {visibleCols.postDate && (
                                         <td className={styles.cell}>
                                             <input
                                                 type="date"
-                                                value={row.date ? new Date(row.date).toISOString().split('T')[0] : ''}
-                                                onChange={(e) => updateRow(row.id, 'date', e.target.value)}
+                                                value={row.postDate ? new Date(row.postDate).toISOString().split('T')[0] : ''}
+                                                onChange={(e) => updateRow(row.id, 'postDate', e.target.value)}
                                                 className={styles.dateInput}
                                             />
                                         </td>
                                     )}
 
-                                    {/* Title */}
-                                    {visibleCols.title && (
+                                    {visibleCols.shootDate && (
+                                        <td className={styles.cell}>
+                                            <input
+                                                type="date"
+                                                value={row.shootDate ? new Date(row.shootDate).toISOString().split('T')[0] : ''}
+                                                onChange={(e) => updateRow(row.id, 'shootDate', e.target.value)}
+                                                className={styles.dateInput}
+                                            />
+                                        </td>
+                                    )}
+
+                                    {visibleCols.topic && (
                                         <td className={styles.cell}>
                                             <input
                                                 type="text"
                                                 value={row.title}
                                                 onChange={(e) => updateRow(row.id, 'title', e.target.value)}
-                                                placeholder="Empty idea..."
+                                                placeholder="Enter topic..."
                                                 className={styles.titleInput}
                                             />
                                         </td>
                                     )}
 
-                                    {/* Script */}
                                     {visibleCols.script && (
                                         <td className={styles.cell}>
-                                            <div className={styles.scriptCell}>
+                                            <div className={styles.hoverTooltipContainer}>
                                                 <select
-                                                    value={row.scriptId || ''}
-                                                    onChange={(e) => updateRow(row.id, 'scriptId', e.target.value || null)}
+                                                    value={row.scriptDetails || ''}
+                                                    onChange={(e) => updateRow(row.id, 'scriptDetails', e.target.value || null)}
                                                     className={styles.select}
+                                                    style={{ textOverflow: 'ellipsis' }}
                                                 >
-                                                    <option value="">No script</option>
-                                                    {scripts.map(s => (
-                                                        <option key={s.id} value={s.id}>#{s.scriptNumber}: {s.title || 'Untitled'}</option>
+                                                    <option value="">Select Script</option>
+                                                    {scriptSections.map(s => (
+                                                        <option key={s.id} value={s.id}>{s.title}</option>
                                                     ))}
                                                 </select>
-                                                {row.scriptId && (
-                                                    <button
-                                                        className={styles.expandBtn}
-                                                        onClick={() => setPopupContent({ type: 'script', content: scripts.find(s => s.id === row.scriptId) })}
-                                                    >
-                                                        <ExternalLink size={14} />
-                                                    </button>
+                                                {selectedScript && (
+                                                    <div className={styles.hoverTooltipText}>
+                                                        <h4>{selectedScript.title}</h4>
+                                                        <p>{selectedScript.previewText}</p>
+                                                        {scriptPageId && (
+                                                            <a href={`/${page?.workspaceId}/${scriptPageId}#${encodeURIComponent(selectedScript.title)}`}
+                                                                target="_blank" rel="noopener noreferrer"
+                                                                className={styles.directLinkBtn}>
+                                                                <ExternalLink size={12} /> View in Script Page
+                                                            </a>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
                                         </td>
                                     )}
 
-                                    {/* Status */}
-                                    {visibleCols.status && (
+                                    {visibleCols.shoot && (
                                         <td className={styles.cell}>
-                                            <select
-                                                value={row.status}
-                                                onChange={(e) => updateRow(row.id, 'status', e.target.value)}
-                                                style={{
-                                                    color: currentStatus.color,
-                                                    backgroundColor: currentStatus.bg,
-                                                    fontWeight: 600
-                                                }}
-                                                className={styles.statusSelect}
-                                            >
-                                                {STATUS_OPTIONS.map(opt => (
-                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                ))}
-                                            </select>
+                                            {renderStatusDropdown(row, 'shootStatus')}
                                         </td>
                                     )}
 
-                                    {/* Assignee */}
-                                    {visibleCols.assignee && (
+                                    {visibleCols.person && (
                                         <td className={styles.cell}>
-                                            <select
-                                                value={row.assigneeId || ''}
-                                                onChange={(e) => updateRow(row.id, 'assigneeId', e.target.value || null)}
-                                                className={styles.select}
-                                            >
-                                                <option value="">Unassigned</option>
-                                                {users.map(u => (
-                                                    <option key={u.id} value={u.id}>{u.name}</option>
-                                                ))}
-                                            </select>
+                                            {renderUserDropdown(row, 'shootPersonId', 'shootStatus')}
                                         </td>
                                     )}
 
-                                    {/* Media / Video Upload */}
-                                    {visibleCols.media && (
+                                    {visibleCols.edit && (
+                                        <td className={styles.cell}>
+                                            {renderStatusDropdown(row, 'editStatus')}
+                                        </td>
+                                    )}
+
+                                    {visibleCols.editor && (
+                                        <td className={styles.cell}>
+                                            {renderUserDropdown(row, 'editorId', 'editStatus')}
+                                        </td>
+                                    )}
+
+                                    {visibleCols.caption && (
+                                        <td className={styles.cell}>
+                                            <div className={styles.hoverTooltipContainer}>
+                                                <input
+                                                    type="text"
+                                                    value={row.caption || ''}
+                                                    onChange={(e) => updateRow(row.id, 'caption', e.target.value)}
+                                                    placeholder="Write caption..."
+                                                    className={styles.titleInput}
+                                                />
+                                                {/* Caption Tooltip */}
+                                                <div className={styles.hoverTooltipText}>
+                                                    <h4>Caption</h4>
+                                                    <textarea
+                                                        spellCheck={false}
+                                                        className={styles.captionPopupTextarea}
+                                                        value={row.caption || ''}
+                                                        onChange={(e) => updateRow(row.id, 'caption', e.target.value)}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        placeholder="Write detailed caption here..."
+                                                    />
+                                                </div>
+                                            </div>
+                                        </td>
+                                    )}
+
+                                    {visibleCols.video && (
                                         <td className={styles.cell}>
                                             {row.driveLink === 'uploading...' ? (
                                                 <span className={styles.uploadingText}>Uploading...</span>
                                             ) : row.driveLink ? (
                                                 <a href={row.driveLink} target="_blank" rel="noopener noreferrer" className={styles.driveLinkBtn}>
-                                                    <PlaySquare size={14} /> View File
+                                                    <PlaySquare size={14} /> Video
                                                 </a>
                                             ) : (
                                                 <label className={styles.uploadBtn}>
-                                                    <Upload size={14} /> Upload Video
+                                                    <Upload size={14} /> Upload
                                                     <input
                                                         type="file"
                                                         style={{ display: 'none' }}
-                                                        onChange={(e) => handleFileUpload(row.id, e)}
+                                                        onChange={(e) => handleVideoUpload(row.id, e)}
                                                     />
                                                 </label>
                                             )}
                                         </td>
                                     )}
 
-                                    {/* Caption */}
-                                    {visibleCols.caption && (
+                                    {visibleCols.thumbnail && (
                                         <td className={styles.cell}>
-                                            <div className={styles.scriptCell}>
-                                                <input
-                                                    type="text"
-                                                    value={row.caption || ''}
-                                                    onChange={(e) => updateRow(row.id, 'caption', e.target.value)}
-                                                    placeholder="..."
-                                                    className={styles.titleInput}
-                                                />
-                                                {row.caption && (
-                                                    <button
-                                                        className={styles.expandBtn}
-                                                        onClick={() => setPopupContent({ type: 'caption', content: row.caption })}
-                                                    >
-                                                        <ExternalLink size={14} />
-                                                    </button>
+                                            {row.thumbnail === 'uploading...' ? (
+                                                <span className={styles.uploadingText}>Uploading...</span>
+                                            ) : row.thumbnail ? (
+                                                <a href={row.thumbnail} target="_blank" rel="noopener noreferrer" className={styles.driveLinkBtn}>
+                                                    <ImageIcon size={14} /> View
+                                                </a>
+                                            ) : (
+                                                <label className={styles.uploadBtn}>
+                                                    <Upload size={14} /> Upload
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        style={{ display: 'none' }}
+                                                        onChange={(e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) handleThumbnailUpload(row.id, file);
+                                                        }}
+                                                    />
+                                                </label>
+                                            )}
+                                        </td>
+                                    )}
+
+                                    {visibleCols.approved && (
+                                        <td className={styles.cell}>
+                                            <div className={styles.approvalContainer}>
+                                                <select
+                                                    value={row.approvalStatus || ''}
+                                                    onChange={(e) => updateRow(row.id, 'approvalStatus', e.target.value)}
+                                                    style={{
+                                                        color: currentApproval.color,
+                                                        backgroundColor: currentApproval.bg,
+                                                        fontWeight: row.approvalStatus ? 600 : 'normal',
+                                                        border: row.approvalStatus ? 'none' : '1px solid var(--border)'
+                                                    }}
+                                                    className={styles.statusSelect}
+                                                >
+                                                    {APPROVAL_STATUS.map(opt => (
+                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                    ))}
+                                                </select>
+                                                {row.approvalStatus === 'Changes' && (
+                                                    <textarea
+                                                        value={row.approvalMsg || ''}
+                                                        onChange={(e) => updateRow(row.id, 'approvalMsg', e.target.value)}
+                                                        placeholder="What changes?"
+                                                        className={styles.approvalTextarea}
+                                                    />
                                                 )}
                                             </div>
                                         </td>
                                     )}
 
-                                    {/* Socials Placeholder */}
                                     {visibleCols.socials && (
                                         <td className={styles.cell} style={{ textAlign: 'center' }}>
-                                            <div className={styles.tooltipContainer}>
-                                                <button
-                                                    className={styles.socialBtnDisabled}
-                                                    disabled
-                                                >
-                                                    <Instagram size={14} />
-                                                </button>
-                                                <div className={styles.tooltipText}>Coming in v2</div>
-                                            </div>
+                                            <button className={styles.socialBtnDisabled} disabled title="Coming in v2">
+                                                <Instagram size={14} />
+                                            </button>
                                         </td>
                                     )}
                                 </tr>
@@ -456,14 +626,6 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                     <Plus size={16} /> New Row
                 </button>
             </div>
-
-            {popupContent && (
-                <PopupPreview
-                    type={popupContent.type}
-                    content={popupContent.content}
-                    onClose={() => setPopupContent(null)}
-                />
-            )}
         </div>
     );
 }
