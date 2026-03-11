@@ -53,8 +53,14 @@ export async function POST(req: Request) {
         });
 
         // ── @Mention notifications ──────────────────────────────────────────
-        if (mentionedUserIds && Array.isArray(mentionedUserIds) && mentionedUserIds.length > 0) {
-            for (const mentionedId of mentionedUserIds) {
+        let targets = mentionedUserIds && Array.isArray(mentionedUserIds) ? mentionedUserIds : [];
+        if (targets.includes('all')) {
+            const allUsers = await prisma.user.findMany({ select: { id: true } });
+            targets = allUsers.map(u => u.id);
+        }
+
+        if (targets.length > 0) {
+            for (const mentionedId of targets) {
                 if (mentionedId === senderId) continue; // Don't notify self
 
                 try {

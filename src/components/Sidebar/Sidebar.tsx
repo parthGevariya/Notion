@@ -403,18 +403,7 @@ export default function Sidebar() {
                         <span>Reminders</span>
                         {hasUnreadReminders && <div className={styles['nav-badge']} />}
                     </div>
-                    <div
-                        className={`${styles['sidebar-nav-item']} ${pathname === '/chat' ? styles.active : ''}`}
-                        onClick={() => router.push('/chat')}
-                    >
-                        <MessageSquare size={16} />
-                        <span>Chat</span>
-                        {chatBadge.hasMention ? (
-                            <div className={styles['nav-mention-badge']}>@</div>
-                        ) : chatBadge.hasBadge ? (
-                            <div className={styles['nav-badge']} />
-                        ) : null}
-                    </div>
+
                 </div>
 
                 {/* Scrollable content */}

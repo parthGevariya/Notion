@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { unlink } from 'fs/promises';
+import { join } from 'path';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -53,6 +55,20 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const reminder = await prisma.reminder.findUnique({ where: { id }, select: { attachmentUrl: true }});
+    if (reminder?.attachmentUrl) {
+        try {
+            // Remove '/uploads/reminders/' prefix to get filename
+            const filename = reminder.attachmentUrl.split('/').pop();
+            if (filename) {
+                const filePath = join(process.cwd(), 'public', 'uploads', 'reminders', filename);
+                await unlink(filePath);
+            }
+        } catch (e) {
+            console.error('[Reminder API] Failed to delete attachment file:', e);
+        }
+    }
 
     await prisma.reminder.delete({ where: { id } });
     return NextResponse.json({ success: true });

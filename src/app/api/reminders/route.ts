@@ -49,44 +49,58 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'title, assigneeId, endDate required' }, { status: 400 });
     }
 
-    const reminder = await prisma.reminder.create({
-        data: {
-            title: body.title,
-            assigneeId: body.assigneeId,
-            creatorId,
-            endDate: new Date(body.endDate),
-            parentId: body.parentId || null,
-        },
-        include: {
-            assignee: { select: { id: true, name: true, avatar: true } },
-            creator: { select: { id: true, name: true, avatar: true } },
-        },
-    });
+    try {
+        const reminder = await prisma.reminder.create({
+            data: {
+                title: body.title,
+                description: body.description || body.details || null,
+                details: body.details || null,
+                assigneeId: body.assigneeId,
+                creatorId,
+                endDate: new Date(body.endDate),
+                parentId: body.parentId || null,
+                attachmentUrl: body.attachmentUrl || null,
+                attachmentName: body.attachmentName || null,
+                attachmentType: body.attachmentType || null,
+            },
+            include: {
+                assignee: { select: { id: true, name: true, avatar: true } },
+                creator: { select: { id: true, name: true, avatar: true } },
+            },
+        });
+        
+        // ── Real-time notification to the assignee ──────────────────────────────
+        if (body.assigneeId !== creatorId) {
+            try {
+                const notification = await prisma.notification.create({
+                    data: {
+                        userId: body.assigneeId,
+                        title: 'New Task Assigned',
+                        message: `${creatorName} assigned you a task: "${body.title}"`,
+                        type: 'task',
+                        link: '/reminders',
+                    },
+                });
 
-    // ── Real-time notification to the assignee ──────────────────────────────
-    if (body.assigneeId !== creatorId) {
-        try {
-            const notification = await prisma.notification.create({
-                data: {
-                    userId: body.assigneeId,
-                    title: 'New Task Assigned',
-                    message: `${creatorName} assigned you a task: "${body.title}"`,
-                    type: 'task',
-                    link: '/reminders',
-                },
-            });
-
-            // Push real-time event via collab-server HTTP endpoint (fire-and-forget)
-            fetch(`${COLLAB_URL}/push-notification`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: body.assigneeId, notification }),
-            }).catch((e) => console.warn('[Notif] Could not reach collab-server:', e.message));
-        } catch (e) {
-            console.error('[Notif] Failed to create notification:', e);
+                // Push real-time event via collab-server HTTP endpoint (fire-and-forget)
+                fetch(`${COLLAB_URL}/push-notification`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: body.assigneeId, notification }),
+                }).catch((e) => console.warn('[Notif] Could not reach collab-server:', e.message));
+            } catch (e) {
+                console.error('[Notif] Failed to create notification:', e);
+            }
         }
-    }
-    // ────────────────────────────────────────────────────────────────────────
+        // ────────────────────────────────────────────────────────────────────────
 
-    return NextResponse.json(reminder, { status: 201 });
+        return NextResponse.json(reminder, { status: 201 });
+    } catch (error: any) {
+        console.error('[Reminder API] Create error:', error);
+        return NextResponse.json({ 
+            error: 'Failed to create reminder', 
+            details: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        }, { status: 500 });
+    }
 }

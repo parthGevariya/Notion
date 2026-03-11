@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Upload, ExternalLink, PlaySquare, Settings2, Instagram, ImageIcon, Copy, Check, X } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import styles from './ClientCalendarView.module.css';
@@ -15,6 +15,11 @@ interface ScriptSection {
     id: string;
     title: string;
     previewText: string;
+}
+
+interface CustomColumn {
+    id: string;
+    name: string;
 }
 
 interface CalendarRow {
@@ -35,6 +40,9 @@ interface CalendarRow {
     driveLink: string | null;
     socialMedia: string | null;
     position: number;
+    keywords?: string | null;
+    link?: string | null;
+    customCols?: string | null;
     shootPerson?: User | null;
     editor?: User | null;
 }
@@ -58,6 +66,8 @@ const DEFAULT_COLS = {
     edit: true,
     editor: true,
     caption: true,
+    keywords: true,
+    link: true,
     video: true,
     thumbnail: true,
     approved: true,
@@ -123,11 +133,30 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
     const [loading, setLoading] = useState(true);
     const [visibleCols, setVisibleCols] = useState<Record<string, boolean>>(DEFAULT_COLS);
     const [showColMenu, setShowColMenu] = useState(false);
+    const [customColumns, setCustomColumns] = useState<CustomColumn[]>([]);
+    const [newColName, setNewColName] = useState('');
     
     // Upload state
     const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
     const [activeUploads, setActiveUploads] = useState<Record<string, XMLHttpRequest>>({});
     const [copiedLink, setCopiedLink] = useState<string | null>(null);
+
+    const colMenuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (colMenuRef.current && !colMenuRef.current.contains(event.target as Node)) {
+                setShowColMenu(false);
+            }
+        }
+        
+        if (showColMenu) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [showColMenu]);
 
     useEffect(() => {
         fetchData();
@@ -148,6 +177,9 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                     const parsed = JSON.parse(pageData.client.settings);
                     if (parsed.columnVisibility) {
                         setVisibleCols({ ...DEFAULT_COLS, ...parsed.columnVisibility });
+                    }
+                    if (parsed.customColumns) {
+                        setCustomColumns(parsed.customColumns);
                     }
                 } catch (e) { console.error('Failed to parse client settings', e); }
             }
@@ -248,6 +280,82 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
             });
         } catch (e) {
             console.error('Failed to update row', e);
+        }
+    };
+
+    const updateCustomCol = async (rowId: string, colId: string, value: string) => {
+        const row = rows.find(r => r.id === rowId);
+        if (!row || !page?.clientId) return;
+        
+        let colsData: Record<string, string> = {};
+        try { colsData = row.customCols ? JSON.parse(row.customCols) : {}; } catch(e){}
+        colsData[colId] = value;
+        const newCustomColsStr = JSON.stringify(colsData);
+        
+        setRows(prev => prev.map(r => r.id === rowId ? { ...r, customCols: newCustomColsStr } : r));
+        
+        try {
+            await fetch(`/api/clients/${page.clientId}/calendar/${rowId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ customCols: newCustomColsStr })
+            });
+        } catch (e) { console.error('Failed to update custom column', e); }
+    };
+
+    const addCustomColumn = async () => {
+        if (!newColName.trim() || !page?.clientId) return;
+        const colId = 'col_' + Date.now();
+        const newCol = { id: colId, name: newColName.trim() };
+        const updatedCols = [...customColumns, newCol];
+        setCustomColumns(updatedCols);
+        setNewColName('');
+        
+        try {
+            const currentSettings = page.client?.settings ? JSON.parse(page.client.settings) : {};
+            currentSettings.customColumns = updatedCols;
+            await fetch(`/api/clients/${page.clientId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ settings: JSON.stringify(currentSettings) })
+            });
+            setPage(prev => prev ? { ...prev, client: { ...prev.client!, settings: JSON.stringify(currentSettings) } } : null);
+        } catch (err) { console.error('Failed to save settings', err); }
+    };
+
+    const removeCustomColumn = async (colId: string) => {
+        if (!page?.clientId || !confirm('Remove this custom column for everyone?')) return;
+        const updatedCols = customColumns.filter(c => c.id !== colId);
+        setCustomColumns(updatedCols);
+        
+        try {
+            const currentSettings = page.client?.settings ? JSON.parse(page.client.settings) : {};
+            currentSettings.customColumns = updatedCols;
+            await fetch(`/api/clients/${page.clientId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ settings: JSON.stringify(currentSettings) })
+            });
+            setPage(prev => prev ? { ...prev, client: { ...prev.client!, settings: JSON.stringify(currentSettings) } } : null);
+        } catch (err) { console.error('Failed to save settings', err); }
+    };
+
+    const handleFillDown = (e: React.KeyboardEvent<HTMLElement>, rowIndex: number, field: string, isCustom = false) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+            e.preventDefault();
+            if (rowIndex > 0) {
+                const prevRow = rows[rowIndex - 1];
+                if (isCustom) {
+                    let prevCols: Record<string, string> = {};
+                    try { prevCols = prevRow.customCols ? JSON.parse(prevRow.customCols) : {}; } catch(e){}
+                    const valToCopy = prevCols[field] || '';
+                    updateCustomCol(rows[rowIndex].id, field, valToCopy);
+                } else {
+                    let valToCopy = (prevRow as any)[field];
+                    if (valToCopy === undefined) valToCopy = null;
+                    updateRow(rows[rowIndex].id, field as keyof CalendarRow, valToCopy);
+                }
+            }
         }
     };
 
@@ -384,13 +492,14 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
 
     if (loading) return <div className={styles.loading}>Loading Calendar...</div>;
 
-    const renderUserDropdown = (row: CalendarRow, field: 'shootPersonId' | 'editorId', statusField: 'shootStatus' | 'editStatus') => {
+    const renderUserDropdown = (row: CalendarRow, index: number, field: 'shootPersonId' | 'editorId', statusField: 'shootStatus' | 'editStatus') => {
         const status = SHOOT_EDIT_STATUS.find(s => s.value === row[statusField]) || SHOOT_EDIT_STATUS[0];
         const value = row[field] || '';
         return (
             <select
                 value={value}
                 onChange={(e) => updateRow(row.id, field, e.target.value || null)}
+                onKeyDown={(e) => handleFillDown(e as unknown as React.KeyboardEvent<HTMLElement>, index, field)}
                 className={styles.select}
                 style={{ color: value ? status.color : 'var(--text-tertiary)', fontWeight: value ? 600 : 'normal' }}
             >
@@ -402,12 +511,13 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
         );
     };
 
-    const renderStatusDropdown = (row: CalendarRow, field: 'shootStatus' | 'editStatus') => {
+    const renderStatusDropdown = (row: CalendarRow, index: number, field: 'shootStatus' | 'editStatus') => {
         const currentStatus = SHOOT_EDIT_STATUS.find(s => s.value === row[field]) || SHOOT_EDIT_STATUS[0];
         return (
             <select
                 value={row[field]}
                 onChange={(e) => updateRow(row.id, field, e.target.value)}
+                onKeyDown={(e) => handleFillDown(e as unknown as React.KeyboardEvent<HTMLElement>, index, field)}
                 style={{ color: currentStatus.color, backgroundColor: currentStatus.bg, fontWeight: 600 }}
                 className={styles.statusSelect}
             >
@@ -427,14 +537,25 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                 </div>
 
                 {(role === 'manager' || role === 'owner') && (
-                    <div style={{ position: 'relative', marginLeft: 'auto' }}>
+                    <div style={{ position: 'relative', marginLeft: 'auto' }} ref={colMenuRef}>
                         <button className={styles.colToggleBtn} onClick={() => setShowColMenu(!showColMenu)}>
                             <Settings2 size={16} /> Columns
                         </button>
 
                         {showColMenu && (
                             <div className={styles.colMenu}>
-                                <div className={styles.colMenuHeader}>Visible Columns</div>
+                                <div className={styles.colMenuHeader} style={{ marginTop: 12 }}>Custom Columns</div>
+                                {customColumns.map(c => (
+                                    <div key={c.id} className={styles.colMenuItem} style={{ display: 'flex', justifyContent: 'space-between', paddingRight: '8px' }}>
+                                        <span>{c.name}</span>
+                                        <button onClick={() => removeCustomColumn(c.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><Trash2 size={12}/></button>
+                                    </div>
+                                ))}
+                                <div style={{ display: 'flex', gap: 4, marginTop: 8, padding: '0 12px 12px 12px' }}>
+                                    <input type="text" value={newColName} onChange={e => setNewColName(e.target.value)} placeholder="New Col Name" style={{ flex: 1, padding: '4px 8px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}/>
+                                    <button onClick={addCustomColumn} style={{ padding: '4px 8px', fontSize: '12px', background: 'var(--text-primary)', color: 'var(--bg-primary)', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Add</button>
+                                </div>
+                                <div className={styles.colMenuHeader} style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>Visible Default Columns</div>
                                 {Object.keys(DEFAULT_COLS).map(col => (
                                     <label key={col} className={styles.colMenuItem}>
                                         <input
@@ -470,6 +591,9 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                             {visibleCols.thumbnail && <th style={{ width: '220px' }}>Thumbnail</th>}
                             {visibleCols.approved && <th style={{ width: '150px' }}>Approved</th>}
                             {visibleCols.socials && <th style={{ width: '80px' }}>Socials</th>}
+                            {visibleCols.keywords && <th style={{ width: '200px' }}>Keywords</th>}
+                            {visibleCols.link && <th style={{ width: '200px' }}>Link</th>}
+                            {customColumns.map(c => <th key={c.id} style={{ width: '200px' }}>{c.name}</th>)}
                         </tr>
                     </thead>
                     <tbody>
@@ -497,6 +621,7 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                                                 type="date"
                                                 value={row.postDate ? new Date(row.postDate).toISOString().split('T')[0] : ''}
                                                 onChange={(e) => updateRow(row.id, 'postDate', e.target.value)}
+                                                onKeyDown={(e) => handleFillDown(e, index, 'postDate')}
                                                 className={styles.dateInput}
                                             />
                                         </td>
@@ -508,6 +633,7 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                                                 type="date"
                                                 value={row.shootDate ? new Date(row.shootDate).toISOString().split('T')[0] : ''}
                                                 onChange={(e) => updateRow(row.id, 'shootDate', e.target.value)}
+                                                onKeyDown={(e) => handleFillDown(e, index, 'shootDate')}
                                                 className={styles.dateInput}
                                             />
                                         </td>
@@ -519,6 +645,7 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                                                 type="text"
                                                 value={row.title}
                                                 onChange={(e) => updateRow(row.id, 'title', e.target.value)}
+                                                onKeyDown={(e) => handleFillDown(e, index, 'title')}
                                                 placeholder="Enter topic..."
                                                 className={styles.titleInput}
                                             />
@@ -531,6 +658,7 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                                                 <select
                                                     value={row.scriptDetails || ''}
                                                     onChange={(e) => updateRow(row.id, 'scriptDetails', e.target.value || null)}
+                                                    onKeyDown={(e) => handleFillDown(e as unknown as React.KeyboardEvent<HTMLElement>, index, 'scriptDetails')}
                                                     className={styles.select}
                                                     style={{ textOverflow: 'ellipsis' }}
                                                 >
@@ -558,25 +686,25 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
 
                                     {visibleCols.shoot && (
                                         <td className={styles.cell}>
-                                            {renderStatusDropdown(row, 'shootStatus')}
+                                            {renderStatusDropdown(row, index, 'shootStatus')}
                                         </td>
                                     )}
 
                                     {visibleCols.person && (
                                         <td className={styles.cell}>
-                                            {renderUserDropdown(row, 'shootPersonId', 'shootStatus')}
+                                            {renderUserDropdown(row, index, 'shootPersonId', 'shootStatus')}
                                         </td>
                                     )}
 
                                     {visibleCols.edit && (
                                         <td className={styles.cell}>
-                                            {renderStatusDropdown(row, 'editStatus')}
+                                            {renderStatusDropdown(row, index, 'editStatus')}
                                         </td>
                                     )}
 
                                     {visibleCols.editor && (
                                         <td className={styles.cell}>
-                                            {renderUserDropdown(row, 'editorId', 'editStatus')}
+                                            {renderUserDropdown(row, index, 'editorId', 'editStatus')}
                                         </td>
                                     )}
 
@@ -587,6 +715,7 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                                                     type="text"
                                                     value={row.caption || ''}
                                                     onChange={(e) => updateRow(row.id, 'caption', e.target.value)}
+                                                    onKeyDown={(e) => handleFillDown(e, index, 'caption')}
                                                     placeholder="Write caption..."
                                                     className={styles.titleInput}
                                                 />
@@ -598,6 +727,7 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                                                         className={styles.captionPopupTextarea}
                                                         value={row.caption || ''}
                                                         onChange={(e) => updateRow(row.id, 'caption', e.target.value)}
+                                                        onKeyDown={(e) => handleFillDown(e, index, 'caption')}
                                                         onClick={(e) => e.stopPropagation()}
                                                         placeholder="Write detailed caption here..."
                                                     />
@@ -694,6 +824,7 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                                                 <select
                                                     value={row.approvalStatus || ''}
                                                     onChange={(e) => updateRow(row.id, 'approvalStatus', e.target.value)}
+                                                    onKeyDown={(e) => handleFillDown(e as unknown as React.KeyboardEvent<HTMLElement>, index, 'approvalStatus')}
                                                     style={{
                                                         color: currentApproval.color,
                                                         backgroundColor: currentApproval.bg,
@@ -710,6 +841,7 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                                                     <textarea
                                                         value={row.approvalMsg || ''}
                                                         onChange={(e) => updateRow(row.id, 'approvalMsg', e.target.value)}
+                                                        onKeyDown={(e) => handleFillDown(e, index, 'approvalMsg')}
                                                         placeholder="What changes?"
                                                         className={styles.approvalTextarea}
                                                     />
@@ -725,6 +857,57 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
                                             </button>
                                         </td>
                                     )}
+
+                                    {visibleCols.keywords && (
+                                        <td className={styles.cell}>
+                                            <input
+                                                type="text"
+                                                value={row.keywords || ''}
+                                                onChange={(e) => updateRow(row.id, 'keywords', e.target.value)}
+                                                onKeyDown={(e) => handleFillDown(e, index, 'keywords')}
+                                                placeholder="Keywords..."
+                                                className={styles.titleInput}
+                                            />
+                                        </td>
+                                    )}
+
+                                    {visibleCols.link && (
+                                        <td className={styles.cell}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                <input
+                                                    type="text"
+                                                    value={row.link || ''}
+                                                    onChange={(e) => updateRow(row.id, 'link', e.target.value)}
+                                                    onKeyDown={(e) => handleFillDown(e, index, 'link')}
+                                                    placeholder="Link..."
+                                                    className={styles.titleInput}
+                                                    style={{ flex: 1 }}
+                                                />
+                                                {row.link && (
+                                                    <a href={row.link.startsWith('http') ? row.link : `https://${row.link}`} target="_blank" rel="noopener noreferrer" className={styles.actionBtn}>
+                                                        <ExternalLink size={14} />
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </td>
+                                    )}
+
+                                    {customColumns.map(c => {
+                                        let cVal = '';
+                                        try { cVal = row.customCols ? JSON.parse(row.customCols)[c.id] || '' : ''; } catch(e){}
+                                        return (
+                                            <td key={c.id} className={styles.cell}>
+                                                <input
+                                                    type="text"
+                                                    value={cVal}
+                                                    onChange={(e) => updateCustomCol(row.id, c.id, e.target.value)}
+                                                    onKeyDown={(e) => handleFillDown(e, index, c.id, true)}
+                                                    placeholder={c.name}
+                                                    className={styles.titleInput}
+                                                />
+                                            </td>
+                                        );
+                                    })}
                                 </tr>
                             );
                         })}

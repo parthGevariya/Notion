@@ -116,14 +116,16 @@
 
 .content {
     flex: 1;
-    overflow-y: auto;
     display: flex;
     flex-direction: column;
+    overflow: hidden; /* allow inner lists to handle their own scrolling */
+    min-height: 0;
 }
 
 .tabBar {
     display: flex;
     border-bottom: 1px solid var(--divider, #e8e8e8);
+    flex-shrink: 0;
 }
 
 .tab {
@@ -148,6 +150,8 @@
 .chatList {
     flex: 1;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .chatItem {

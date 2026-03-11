@@ -137,9 +137,10 @@ export default function GroupChatPanel({ socket, userId, userName, isActive }: G
         inputRef.current?.focus();
     };
 
-    const filteredUsers = users.filter(u =>
-        u.id !== userId && u.name.toLowerCase().includes(mentionQuery.toLowerCase())
-    );
+    const filteredUsers = [
+        { id: 'all', name: 'all' },
+        ...users.filter(u => u.id !== userId)
+    ].filter(u => u.name.toLowerCase().includes(mentionQuery.toLowerCase()));
 
     // Image paste
     const handlePaste = async (e: React.ClipboardEvent) => {

@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 // ==================== AUTH & USERS ====================
@@ -210,6 +211,9 @@ model CalendarRow {
   driveLink      String?
   socialMedia    String?
   position       Int       @default(0)
+  keywords       String?
+  link           String?
+  customCols     String?   // JSON representation of custom columns
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -272,6 +276,10 @@ model Reminder {
   status       String    @default("pending") // pending, in_progress, in_review, completed, overdue
   reviewStatus String?   // "pending_review", "approved", "changes_requested"
   
+  attachmentUrl  String?
+  attachmentName String?
+  attachmentType String?
+
   parentId     String?   // For re-assignment chain
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt

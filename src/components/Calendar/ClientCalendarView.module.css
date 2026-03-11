@@ -1,6 +1,6 @@
 .container {
     padding: 0 40px 100px;
-    max-width: 1600px;
+    max-width: 100%;
 }
 
 .header {
@@ -41,9 +41,12 @@
     position: absolute;
     top: calc(100% + 8px);
     right: 0;
-    width: 200px;
-    max-height: 400px;
+    min-width: 280px;
+    width: max-content;
+    max-width: 400px;
+    max-height: 500px;
     overflow-y: auto;
+    overflow-x: hidden;
     background: var(--bg-primary);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
@@ -262,6 +265,7 @@
 .hoverTooltipContainer:focus-within .hoverTooltipText {
     visibility: visible;
     opacity: 1;
+    transition: opacity 0.2s 0.6s, visibility 0.2s 0.6s;
 }
 
 .hoverTooltipText h4 {

@@ -254,3 +254,59 @@
     justify-content: center;
     flex-shrink: 0;
 }
+
+.reminder-file-upload {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--bg-primary);
+    border: 1px dashed var(--divider);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.1s;
+    margin-top: 4px;
+}
+
+.reminder-file-upload:hover {
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
+}
+
+.form-attachment-preview {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: rgba(35, 131, 226, 0.05);
+    border: 1px solid rgba(35, 131, 226, 0.15);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--accent-blue);
+    margin-top: 4px;
+}
+
+.remove-att-btn {
+    background: none;
+    border: none;
+    padding: 2px;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+
+.remove-att-btn:hover {
+    background: rgba(231, 76, 60, 0.1);
+    color: #e74c3c;
+}
+
+.error-text {
+    font-size: 12px;
+    color: #e74c3c;
+    margin-top: 4px;
+}

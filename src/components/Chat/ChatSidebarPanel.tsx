@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import { MessageSquare, X, ArrowLeft } from 'lucide-react';
+import { MessageSquare, X, ArrowLeft, Plus } from 'lucide-react';
 import { useAppSocket } from '@/components/Collab/GlobalSocketProvider';
 import GroupChatPanel from './GroupChatPanel';
 import DMPanel from './DMPanel';
@@ -15,6 +15,8 @@ export default function ChatSidebarPanel() {
     const [activeTab, setActiveTab] = useState<'users' | 'group'>('users');
     const [selectedUser, setSelectedUser] = useState<any | null>(null);
     const [users, setUsers] = useState<any[]>([]);
+    const [conversations, setConversations] = useState<any[]>([]);
+    const [showNewChat, setShowNewChat] = useState(false);
 
     // ── Unread tracking ──
     const [unreadDMs, setUnreadDMs] = useState(0);
@@ -35,6 +37,11 @@ export default function ChatSidebarPanel() {
         fetch('/api/users')
             .then(r => r.ok ? r.json() : [])
             .then(data => setUsers(data.filter((u: any) => u.id !== userId)))
+            .catch(console.error);
+            
+        fetch('/api/chat')
+            .then(r => r.ok ? r.json() : [])
+            .then(setConversations)
             .catch(console.error);
     }, [status, userId]);
 
@@ -138,24 +145,38 @@ export default function ChatSidebarPanel() {
             {/* Slide-in Panel */}
             <div className={`${styles.panel} ${isOpen ? styles.open : ''}`}>
                 <div className={styles.header}>
-                    <div className={styles.title}>
+                    <div className={styles.title} style={{ width: '100%', justifyContent: 'space-between' }}>
                         {selectedUser ? (
-                            <>
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
                                 <button className={styles.backBtn} onClick={handleBack}>
                                     <ArrowLeft size={18} />
                                 </button>
                                 {selectedUser.name}
-                            </>
+                            </div>
                         ) : (
-                            <>
-                                <MessageSquare size={18} />
-                                Team Chat
-                            </>
+                            <div style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <MessageSquare size={18} />
+                                    Team Chat
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                    {activeTab === 'users' && !showNewChat && (
+                                        <button 
+                                            className={styles.closeBtn} 
+                                            title="New Chat"
+                                            onClick={() => setShowNewChat(true)}
+                                            style={{ marginRight: '4px' }}
+                                        >
+                                            <Plus size={18} />
+                                        </button>
+                                    )}
+                                    <button className={styles.closeBtn} onClick={() => setIsOpen(false)}>
+                                        <X size={20} />
+                                    </button>
+                                </div>
+                            </div>
                         )}
                     </div>
-                    <button className={styles.closeBtn} onClick={() => setIsOpen(false)}>
-                        <X size={20} />
-                    </button>
                 </div>
 
                 {!selectedUser ? (
@@ -179,17 +200,55 @@ export default function ChatSidebarPanel() {
 
                         {activeTab === 'users' && (
                             <div className={styles.chatList}>
-                                {users.map(u => (
-                                    <div key={u.id} className={styles.chatItem} onClick={() => handleSelectUser(u)}>
-                                        <div className={styles.avatar}>
-                                            {u.name.charAt(0).toUpperCase()}
-                                        </div>
-                                        <div className={styles.itemInfo}>
-                                            <div className={styles.itemTitle}>{u.name}</div>
-                                            <div className={styles.itemPreview}>{u.role}</div>
-                                        </div>
+                                {showNewChat && (
+                                    <div style={{ padding: '16px', borderBottom: '1px solid var(--divider)' }}>
+                                        <select 
+                                            onChange={e => {
+                                                const uid = e.target.value;
+                                                const user = users.find(u => u.id === uid);
+                                                if (user) {
+                                                    handleSelectUser(user);
+                                                    setShowNewChat(false);
+                                                }
+                                            }} 
+                                            defaultValue="" 
+                                            style={{ 
+                                                width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--accent-blue)', 
+                                                background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', outline: 'none'
+                                            }}
+                                        >
+                                            <option value="" disabled>Select a user to chat...</option>
+                                            {users.map(u => (
+                                                <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                                            ))}
+                                        </select>
                                     </div>
-                                ))}
+                                )}
+
+                                {conversations.length === 0 && !showNewChat ? (
+                                    <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--text-tertiary)', fontSize: '13px' }}>
+                                        No recent chats.<br/>Click "+ New Chat" to start one!
+                                    </div>
+                                ) : (
+                                    conversations.map(conv => (
+                                        <div key={conv.partner.id} className={styles.chatItem} onClick={() => handleSelectUser(conv.partner)}>
+                                            <div className={styles.avatar}>
+                                                {conv.partner.name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div className={styles.itemInfo}>
+                                                <div className={styles.itemTitle}>{conv.partner.name}</div>
+                                                <div className={styles.itemPreview} style={{ fontSize: '12px', color: conv.unreadCount > 0 ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: conv.unreadCount > 0 ? 600 : 400 }}>
+                                                    {conv.lastMessage?.content || 'No messages'}
+                                                </div>
+                                            </div>
+                                            {conv.unreadCount > 0 && (
+                                                <div style={{ background: 'var(--accent-blue)', color: 'white', fontSize: '11px', fontWeight: 600, padding: '2px 6px', borderRadius: '10px', marginLeft: 'auto' }}>
+                                                    {conv.unreadCount}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         )}
 

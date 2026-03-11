@@ -1,8 +1,8 @@
 .container {
     display: flex;
     flex-direction: column;
-    height: 100%;
     flex: 1;
+    min-height: 0; /* Ensures flex container can shrink properly */
 }
 
 .messageList {
@@ -28,6 +28,7 @@
     border-top: 1px solid var(--divider, #e8e8e8);
     background-color: var(--bg-primary, #ffffff);
     gap: 8px;
+    flex-shrink: 0;
 }
 
 .input {
@@ -307,6 +308,7 @@
     padding: 8px 16px;
     background: var(--bg-secondary, #f9f9f9);
     border-top: 1px solid var(--divider, #e8e8e8);
+    flex-shrink: 0;
 }
 
 .imagePreviewThumb {

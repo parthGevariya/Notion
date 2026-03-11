@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { Check, Clock, X, AlertCircle } from 'lucide-react';
+import { Check, Clock, X, AlertCircle, Download, Image as ImageIcon, FileText, ExternalLink } from 'lucide-react';
 import styles from './TaskDetailModal.module.css';
 
 interface TaskDetailModalProps {
@@ -12,6 +12,7 @@ interface TaskDetailModalProps {
 
 export default function TaskDetailModal({ task, onClose, onUpdate, currentUserId }: TaskDetailModalProps) {
     const [loading, setLoading] = useState(false);
+    const [showFullImage, setShowFullImage] = useState(false);
 
     const handleAction = async (actionType: 'complete' | 'approve' | 'request_changes') => {
         setLoading(true);
@@ -77,6 +78,56 @@ export default function TaskDetailModal({ task, onClose, onUpdate, currentUserId
                         <div className={styles.descriptionBlock}>
                             <h4>Description</h4>
                             <p>{task.description}</p>
+                        </div>
+                    )}
+
+                    {task.attachmentUrl && (
+                        <div className={styles.attachmentBlock}>
+                            <h4>Attachment</h4>
+                            {task.attachmentType === 'image' ? (
+                                <div className={styles.imageAttachment}>
+                                    <div className={styles.imageThumbnail} onClick={() => setShowFullImage(true)}>
+                                        <img src={task.attachmentUrl} alt={task.attachmentName || 'Attachment'} />
+                                        <div className={styles.imageOverlay}>
+                                            <ImageIcon size={20} />
+                                        </div>
+                                    </div>
+                                    <div className={styles.attachmentInfo}>
+                                        <span className={styles.attachmentName}>{task.attachmentName}</span>
+                                        <a href={task.attachmentUrl} download={task.attachmentName} className={styles.downloadLink}>
+                                            <Download size={14} /> Download
+                                        </a>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className={styles.fileAttachment}>
+                                    <div className={styles.fileIcon}>
+                                        <FileText size={24} />
+                                    </div>
+                                    <div className={styles.attachmentInfo}>
+                                        <span className={styles.attachmentName}>{task.attachmentName}</span>
+                                        <div className={styles.fileActions}>
+                                            <a href={task.attachmentUrl} download={task.attachmentName} className={styles.downloadLink}>
+                                                <Download size={14} /> Download
+                                            </a>
+                                            <a href={task.attachmentUrl} target="_blank" rel="noopener noreferrer" className={styles.viewLink}>
+                                                <ExternalLink size={14} /> View
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {showFullImage && task.attachmentType === 'image' && (
+                        <div className={styles.imageModalOverlay} onClick={() => setShowFullImage(false)}>
+                            <div className={styles.imageModalContent} onClick={e => e.stopPropagation()}>
+                                <button className={styles.imageModalClose} onClick={() => setShowFullImage(false)}>
+                                    <X size={24} />
+                                </button>
+                                <img src={task.attachmentUrl} alt={task.attachmentName || 'Full size'} />
+                            </div>
                         </div>
                     )}
                 </div>

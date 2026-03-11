@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, Clock, User, CalendarDays, Bell } from 'lucide-react';
+import { Plus, Trash2, Clock, User, CalendarDays, Bell, Paperclip, X, File as FileIcon, ImageIcon } from 'lucide-react';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import Topbar from '@/components/Topbar/Topbar';
 import TaskDetailModal from '@/components/Topbar/TaskDetailModal';
@@ -25,6 +25,9 @@ interface Reminder {
     status: string;
     completedAt: string | null;
     parentId: string | null;
+    attachmentUrl: string | null;
+    attachmentName: string | null;
+    attachmentType: string | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -48,6 +51,9 @@ export default function RemindersPage() {
     const [formDetails, setFormDetails] = useState('');
     const [formAssignee, setFormAssignee] = useState('');
     const [formEndDate, setFormEndDate] = useState('');
+    const [attachment, setAttachment] = useState<{ url: string; name: string; type: string } | null>(null);
+    const [uploading, setUploading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
 
     useEffect(() => {
         if (authStatus === 'unauthenticated') router.push('/login');
@@ -68,26 +74,75 @@ export default function RemindersPage() {
             .then(setUsers)
             .catch(() => { });
     }, []);
+    
+    const handleFileUpload = async (file: File) => {
+        if (!file) return;
+        setUploading(true);
+        setUploadError(null);
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        try {
+            const res = await fetch('/api/upload/reminder', {
+                method: 'POST',
+                body: formData
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setAttachment(data);
+            } else {
+                const error = await res.json();
+                setUploadError(error.error || 'Upload failed');
+            }
+        } catch (e) {
+            setUploadError('Network error');
+        } finally {
+            setUploading(false);
+        }
+    };
+    
+    const handlePaste = async (e: React.ClipboardEvent) => {
+        const items = Array.from(e.clipboardData.items);
+        const fileItem = items.find(i => i.kind === 'file');
+        if (fileItem) {
+            const file = fileItem.getAsFile();
+            if (file) handleFileUpload(file);
+        }
+    };
 
     const handleCreate = async () => {
         if (!formTitle || !formAssignee || !formEndDate) return;
 
-        const res = await fetch('/api/reminders', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                title: formTitle,
-                details: formDetails || null,
-                assigneeId: formAssignee,
-                endDate: formEndDate,
-            }),
-        });
+        try {
+            const res = await fetch('/api/reminders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: formTitle,
+                    description: formDetails || null, // Map formDetails to description for the modal
+                    details: formDetails || null,
+                    assigneeId: formAssignee,
+                    endDate: formEndDate,
+                    attachmentUrl: attachment?.url,
+                    attachmentName: attachment?.name,
+                    attachmentType: attachment?.type,
+                }),
+            });
 
-        if (res.ok) {
-            const reminder = await res.json();
-            setReminders(prev => [reminder, ...prev]);
-            setFormTitle(''); setFormDetails(''); setFormAssignee(''); setFormEndDate('');
-            setShowForm(false);
+            if (res.ok) {
+                const reminder = await res.json();
+                setReminders(prev => [reminder, ...prev]);
+                setFormTitle(''); setFormDetails(''); setFormAssignee(''); setFormEndDate('');
+                setAttachment(null);
+                setShowForm(false);
+            } else {
+                const data = await res.json();
+                alert(`Error: ${data.error || 'Failed to create reminder'}\nDetails: ${data.details || 'No details'}`);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to connect to the server.');
         }
     };
 
@@ -160,7 +215,27 @@ export default function RemindersPage() {
                                     placeholder="Details / Description (optional)..."
                                     rows={3}
                                     style={{ resize: 'vertical' }}
+                                    onPaste={handlePaste}
                                 />
+                            </div>
+                            <div className="reminder-form-row">
+                                <label className="reminder-file-upload">
+                                    <input 
+                                        type="file" 
+                                        style={{ display: 'none' }} 
+                                        onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0])} 
+                                    />
+                                    <Paperclip size={16} /> 
+                                    {uploading ? 'Uploading...' : 'Attach File (max 500MB) or Paste Image'}
+                                </label>
+                                {attachment && (
+                                    <div className="form-attachment-preview">
+                                        {attachment.type === 'image' ? <ImageIcon size={14} /> : <FileIcon size={14} />}
+                                        <span>{attachment.name}</span>
+                                        <button onClick={() => setAttachment(null)} className="remove-att-btn"><X size={14} /></button>
+                                    </div>
+                                )}
+                                {uploadError && <div className="error-text">{uploadError}</div>}
                             </div>
                             <div className="reminder-form-row">
                                 <select
