@@ -4,16 +4,16 @@
  * WorkspacePage
  * Entry point — renders the role-appropriate dashboard for the current user.
  * If no session, redirects to /login.
+ * NOTE: Sidebar is provided by (app)/layout.tsx — do not add it here.
  */
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import Sidebar from '@/components/Sidebar/Sidebar';
 import Topbar from '@/components/Topbar/Topbar';
 import PageLoadingSkeleton from '@/components/Skeleton/PageLoadingSkeleton';
-import styles from './workspace.module.css';
+import styles from '../../workspace/workspace.module.css';
 
 // Lazy-load all dashboards (avoids SSR issues with session)
 const OwnerDashboard = dynamic(() => import('@/components/Dashboards/OwnerDashboard'), { ssr: false });
@@ -63,14 +63,11 @@ export default function WorkspacePage() {
     };
 
     return (
-        <div className={styles['workspace-layout']}>
-            <Sidebar />
-            <div className={styles['workspace-main']}>
-                <Topbar />
-                {/* Role-based dashboard content */}
-                <div style={{ overflowY: 'auto', height: 'calc(100vh - var(--topbar-height))' }}>
-                    {renderDashboard()}
-                </div>
+        <div className={styles['workspace-main']} style={{ flex: 1, marginLeft: 'var(--sidebar-width)' }}>
+            <Topbar />
+            {/* Role-based dashboard content */}
+            <div style={{ overflowY: 'auto', height: 'calc(100vh - var(--topbar-height))' }}>
+                {renderDashboard()}
             </div>
         </div>
     );

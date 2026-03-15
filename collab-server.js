@@ -133,7 +133,8 @@ io.on('connection', (socket) => {
         currentUserId = userId; // Store for this socket
         socket.join(`user_${userId}`);
         socket.join('group_chat');
-        console.log(`[App] User ${userId} joined global chat rooms.`);
+        socket.join('app_global'); // ← global room for live app-wide events
+        console.log(`[App] User ${userId} joined global rooms.`);
     });
 
     socket.on('send-group-message', (message) => {
@@ -284,6 +285,30 @@ server.on('request', (req, res) => {
                 }
                 io.to(`user_${userId}`).emit('task-assigned', task);
                 console.log(`[Push] Task assigned event to user_${userId}`);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ ok: true }));
+            } catch (e) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Invalid JSON' }));
+            }
+        });
+        return;
+    }
+
+    // ── /push-app-event — broadcast a named event to all browsers ──────────
+    if (req.method === 'POST' && req.url === '/push-app-event') {
+        let body = '';
+        req.on('data', (chunk) => { body += chunk; });
+        req.on('end', () => {
+            try {
+                const { event, payload } = JSON.parse(body);
+                if (!event) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'event required' }));
+                    return;
+                }
+                io.to('app_global').emit(event, payload);
+                console.log(`[AppEvent] Broadcasted "${event}" to app_global`);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ ok: true }));
             } catch (e) {

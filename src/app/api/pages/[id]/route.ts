@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/db';
+import { pushAppEvent } from '@/lib/pushEvent';
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -66,6 +67,14 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
             where: { id },
             data: updateData,
         });
+
+        // Broadcast: deleted (trashed) or just updated
+        if (isTrashed === true) {
+            pushAppEvent('page-deleted', { id, parentId: page.parentId });
+        } else if (title !== undefined || icon !== undefined) {
+            // Only broadcast sidebar-relevant changes (title / icon)
+            pushAppEvent('page-updated', { id, title: page.title, icon: page.icon, parentId: page.parentId });
+        }
 
         return NextResponse.json(page);
     } catch (error) {

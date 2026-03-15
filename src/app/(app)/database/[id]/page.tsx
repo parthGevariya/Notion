@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
-import Sidebar from '@/components/Sidebar/Sidebar';
 import Topbar from '@/components/Topbar/Topbar';
 import DatabaseTableView, { Column, Row } from '@/components/Database/DatabaseTableView';
 
@@ -29,13 +28,10 @@ export default function DatabasePage() {
         if (status === 'unauthenticated') router.push('/login');
     }, [status, router]);
 
-    // Fetch database
     const fetchDb = useCallback(async () => {
         try {
             const res = await fetch(`/api/databases/${dbId}`);
-            if (res.ok) {
-                setDb(await res.json());
-            }
+            if (res.ok) setDb(await res.json());
         } catch (e) {
             console.error('Failed to load database', e);
         } finally {
@@ -45,7 +41,6 @@ export default function DatabasePage() {
 
     useEffect(() => { fetchDb(); }, [fetchDb]);
 
-    // Handlers
     const handleTitleChange = useCallback(async (title: string) => {
         await fetch(`/api/databases/${dbId}`, {
             method: 'PATCH',
@@ -89,10 +84,7 @@ export default function DatabasePage() {
     const handleRowUpdate = useCallback(async (rowId: string, properties: Record<string, any>) => {
         setDb(prev => {
             if (!prev) return null;
-            return {
-                ...prev,
-                rows: prev.rows.map(r => r.id === rowId ? { ...r, properties } : r),
-            };
+            return { ...prev, rows: prev.rows.map(r => r.id === rowId ? { ...r, properties } : r) };
         });
         await fetch(`/api/databases/${dbId}/rows`, {
             method: 'PATCH',
@@ -114,44 +106,31 @@ export default function DatabasePage() {
     }, [dbId]);
 
     if (status === 'loading' || loading) {
-        return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--text-secondary)' }}>
-                Loading...
-            </div>
-        );
+        return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--text-secondary)' }}>Loading...</div>;
     }
 
     if (!db) {
-        return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--text-secondary)' }}>
-                Database not found
-            </div>
-        );
+        return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--text-secondary)' }}>Database not found</div>;
     }
 
     return (
-        <div style={{ display: 'flex', height: '100vh', background: 'var(--bg-primary)' }}>
-            <Sidebar />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <Topbar
-                    page={{ id: db.id, title: db.title, icon: db.icon }}
-                />
-                <div style={{ flex: 1, overflow: 'auto', padding: '0 96px' }}>
-                    <div style={{ maxWidth: '100%', padding: '40px 0' }}>
-                        <DatabaseTableView
-                            databaseId={db.id}
-                            title={db.title}
-                            icon={db.icon || undefined}
-                            columns={db.schema}
-                            rows={db.rows}
-                            onTitleChange={handleTitleChange}
-                            onColumnsChange={handleColumnsChange}
-                            onRowAdd={handleRowAdd}
-                            onRowUpdate={handleRowUpdate}
-                            onRowDelete={handleRowDelete}
-                            onColumnAdd={handleColumnAdd}
-                        />
-                    </div>
+        <div style={{ flex: 1, marginLeft: 'var(--sidebar-width)', display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100vh', background: 'var(--bg-primary)' }}>
+            <Topbar page={{ id: db.id, title: db.title, icon: db.icon }} />
+            <div style={{ flex: 1, overflow: 'auto', padding: '0 96px' }}>
+                <div style={{ maxWidth: '100%', padding: '40px 0' }}>
+                    <DatabaseTableView
+                        databaseId={db.id}
+                        title={db.title}
+                        icon={db.icon || undefined}
+                        columns={db.schema}
+                        rows={db.rows}
+                        onTitleChange={handleTitleChange}
+                        onColumnsChange={handleColumnsChange}
+                        onRowAdd={handleRowAdd}
+                        onRowUpdate={handleRowUpdate}
+                        onRowDelete={handleRowDelete}
+                        onColumnAdd={handleColumnAdd}
+                    />
                 </div>
             </div>
         </div>

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
+import { pushAppEvent } from '@/lib/pushEvent';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -47,6 +48,9 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
         },
     });
 
+    // Broadcast update so all browsers refresh the reminders list
+    pushAppEvent('reminder-updated', reminder);
+
     return NextResponse.json(reminder);
 }
 
@@ -71,5 +75,6 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     }
 
     await prisma.reminder.delete({ where: { id } });
+    pushAppEvent('reminder-deleted', { id });
     return NextResponse.json({ success: true });
 }

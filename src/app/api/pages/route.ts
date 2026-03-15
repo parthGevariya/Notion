@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/db';
+import { pushAppEvent } from '@/lib/pushEvent';
 
 // GET /api/pages - List all pages for user's workspace
 export async function GET(req: NextRequest) {
@@ -96,6 +97,15 @@ export async function POST(req: NextRequest) {
                 createdById: userId,
                 position: (lastPage?.position ?? -1) + 1,
             },
+        });
+
+        // Broadcast to all connected browsers
+        pushAppEvent('page-created', {
+            id: page.id,
+            title: page.title,
+            icon: page.icon,
+            parentId: page.parentId,
+            _count: { children: 0 },
         });
 
         return NextResponse.json(page, { status: 201 });

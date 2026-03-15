@@ -4,10 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Plus, Trash2, Clock, User, CalendarDays, Bell, Paperclip, X, File as FileIcon, ImageIcon } from 'lucide-react';
-import Sidebar from '@/components/Sidebar/Sidebar';
-import Topbar from '@/components/Topbar/Topbar';
 import TaskDetailModal from '@/components/Topbar/TaskDetailModal';
-import './reminders.css';
+import { useAppSocket } from '@/lib/useAppSocket';
+import '../../reminders/reminders.css';
 
 interface ReminderUser {
     id: string;
@@ -74,6 +73,56 @@ export default function RemindersPage() {
             .then(setUsers)
             .catch(() => { });
     }, []);
+
+    // ── Real-time: subscribe to reminder events ────────────────────────────
+    const socket = useAppSocket();
+    const currentUserId = (session?.user as { id?: string })?.id;
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const onReminderCreated = (newReminder: Reminder) => {
+            // Show the reminder if it belongs to the current user (as assignee or creator)
+            const isRelevant =
+                newReminder.assignee?.id === currentUserId ||
+                newReminder.creator?.id === currentUserId;
+            if (!isRelevant) return;
+
+            // Respect current filter
+            const matchesFilter =
+                filter === 'all' ||
+                (filter === 'assigned' && newReminder.assignee?.id === currentUserId) ||
+                (filter === 'created' && newReminder.creator?.id === currentUserId);
+            if (!matchesFilter) return;
+
+            setReminders(prev => {
+                if (prev.some(r => r.id === newReminder.id)) return prev;
+                return [newReminder, ...prev];
+            });
+        };
+
+        const onReminderUpdated = (updated: Reminder) => {
+            setReminders(prev => prev.map(r => r.id === updated.id ? updated : r));
+            // Also sync the open task detail modal if it's showing this reminder
+            setSelectedTask(prev => prev?.id === updated.id ? updated : prev);
+        };
+
+        const onReminderDeleted = ({ id }: { id: string }) => {
+            setReminders(prev => prev.filter(r => r.id !== id));
+            setSelectedTask(prev => prev?.id === id ? null : prev);
+        };
+
+        socket.on('reminder-created', onReminderCreated);
+        socket.on('reminder-updated', onReminderUpdated);
+        socket.on('reminder-deleted', onReminderDeleted);
+
+        return () => {
+            socket.off('reminder-created', onReminderCreated);
+            socket.off('reminder-updated', onReminderUpdated);
+            socket.off('reminder-deleted', onReminderDeleted);
+        };
+    }, [socket, currentUserId, filter]);
+    // ── End real-time ──────────────────────────────────────────────────────
     
     const handleFileUpload = async (file: File) => {
         if (!file) return;
@@ -179,10 +228,8 @@ export default function RemindersPage() {
     if (!session) return null;
 
     return (
-        <div style={{ display: 'flex', minHeight: '100vh' }}>
-            <Sidebar />
-            <div style={{ flex: 1, marginLeft: 'var(--sidebar-width)', minHeight: '100vh' }}>
-                <div className="reminders-page">
+        <div style={{ flex: 1, marginLeft: 'var(--sidebar-width)', minHeight: '100vh' }}>
+            <div className="reminders-page">
                     {/* Header */}
                     <div className="reminders-header">
                         <div className="reminders-title">
@@ -323,8 +370,9 @@ export default function RemindersPage() {
                             ))}
                         </div>
                     )}
+
+
                 </div>
-            </div>
 
             {selectedTask && (
                 <TaskDetailModal

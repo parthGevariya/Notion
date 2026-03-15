@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { pushAppEvent } from '@/lib/pushEvent';
 
 const COLLAB_URL = process.env.COLLAB_SERVER_URL || 'http://localhost:3001';
 
@@ -93,6 +94,9 @@ export async function POST(req: NextRequest) {
             }
         }
         // ────────────────────────────────────────────────────────────────────────
+
+        // Broadcast to all browsers so the reminders page updates live
+        pushAppEvent('reminder-created', reminder);
 
         return NextResponse.json(reminder, { status: 201 });
     } catch (error: any) {

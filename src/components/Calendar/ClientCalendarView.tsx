@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Upload, ExternalLink, PlaySquare, Settings2, Instagram, ImageIcon, Copy, Check, X } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import styles from './ClientCalendarView.module.css';
+import { useAppSocket } from '@/lib/useAppSocket';
 
 interface User {
     id: string;
@@ -162,6 +163,42 @@ export default function ClientCalendarView({ pageId }: { pageId: string }) {
         fetchData();
     }, [pageId]);
 
+    // ── Real-time calendar updates ──────────────────────────────────────────
+    const socket = useAppSocket();
+
+    useEffect(() => {
+        if (!socket || !page?.clientId) return;
+        const myClientId = page.clientId;
+
+        const onRowCreated = (payload: { clientId: string; row: CalendarRow }) => {
+            if (payload.clientId !== myClientId) return;
+            setRows(prev => {
+                if (prev.some(r => r.id === payload.row.id)) return prev;
+                return [...prev, payload.row];
+            });
+        };
+
+        const onRowUpdated = (payload: { clientId: string; row: CalendarRow }) => {
+            if (payload.clientId !== myClientId) return;
+            setRows(prev => prev.map(r => r.id === payload.row.id ? payload.row : r));
+        };
+
+        const onRowDeleted = (payload: { clientId: string; rowId: string }) => {
+            if (payload.clientId !== myClientId) return;
+            setRows(prev => prev.filter(r => r.id !== payload.rowId));
+        };
+
+        socket.on('calendar-row-created', onRowCreated);
+        socket.on('calendar-row-updated', onRowUpdated);
+        socket.on('calendar-row-deleted', onRowDeleted);
+
+        return () => {
+            socket.off('calendar-row-created', onRowCreated);
+            socket.off('calendar-row-updated', onRowUpdated);
+            socket.off('calendar-row-deleted', onRowDeleted);
+        };
+    }, [socket, page?.clientId]);
+    // ── End real-time ────────────────────────────────────────────────────────────
     const fetchData = async () => {
         setLoading(true);
         try {

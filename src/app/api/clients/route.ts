@@ -9,6 +9,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { createGoogleDoc, setDocPublicRead } from '@/lib/google-docs';
 import { createDriveFolder, MAIN_VIDEOS_FOLDER_ID, MAIN_THUMBNAIL_FOLDER_ID } from '@/lib/google-drive';
+import { pushAppEvent } from '@/lib/pushEvent';
 
 export async function GET() {
     const session = await getServerSession(authOptions);
@@ -127,6 +128,9 @@ export async function POST(req: NextRequest) {
                 },
             },
         });
+
+        // Broadcast so all sidebars reload Scripts & Calendar sections
+        pushAppEvent('client-changed', { id: fullClient.id });
 
         return NextResponse.json(fullClient, { status: 201 });
     } catch (e) {

@@ -12,6 +12,7 @@ import { ROLE_LABELS } from '@/lib/types';
 import type { Role } from '@/lib/types';
 import styles from './Sidebar.module.css';
 import SearchModal from './SearchModal';
+import { useAppSocket } from '@/lib/useAppSocket';
 
 interface PageItem {
     id: string;
@@ -60,7 +61,9 @@ export default function Sidebar() {
     const [hasUnreadReminders, setHasUnreadReminders] = useState(false);
 
     const currentPageId = pathname?.split('/page/')[1] || '';
+    const currentUserId = (session?.user as { id?: string })?.id;
 
+    // ── Data fetchers (declared here so socket effect can reference them) ──────
     const fetchPages = useCallback(async () => {
         try {
             const res = await fetch('/api/pages');
@@ -93,6 +96,93 @@ export default function Sidebar() {
         fetchFavorites();
         fetchClients();
     }, [fetchPages, fetchFavorites, fetchClients]);
+
+    // ── Real-time Socket.IO connection ─────────────────────────────────────────
+    const socket = useAppSocket();
+    const currentUserIdRef = useRef<string | undefined>(undefined);
+    currentUserIdRef.current = currentUserId; // keep in sync every render
+    const currentPageIdRef = useRef(currentPageId);
+    currentPageIdRef.current = currentPageId;
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const onPageCreated = (page: PageItem) => {
+            if (page.parentId) {
+                // Child page: add to the right childPages bucket
+                setChildPages(prev => {
+                    if (!prev[page.parentId!]) return prev; // parent not expanded, skip
+                    const exists = prev[page.parentId!].some(p => p.id === page.id);
+                    if (exists) return prev;
+                    return { ...prev, [page.parentId!]: [...prev[page.parentId!], page] };
+                });
+            } else {
+                // Top-level page
+                setPages(prev => {
+                    if (prev.some(p => p.id === page.id)) return prev;
+                    return [...prev, page];
+                });
+            }
+        };
+
+        const onPageUpdated = (data: { id: string; title: string; icon: string | null; parentId: string | null }) => {
+            setPages(prev => prev.map(p => p.id === data.id ? { ...p, title: data.title, icon: data.icon } : p));
+            setChildPages(prev => {
+                const next = { ...prev };
+                for (const key in next) {
+                    next[key] = next[key].map(p => p.id === data.id ? { ...p, title: data.title, icon: data.icon } : p);
+                }
+                return next;
+            });
+            // Update favorites section titles too
+            setFavorites(prev => prev.map(fav =>
+                fav.page.id === data.id ? { ...fav, page: { ...fav.page, title: data.title, icon: data.icon } } : fav
+            ));
+        };
+
+        const onPageDeleted = (data: { id: string; parentId: string | null }) => {
+            setPages(prev => prev.filter(p => p.id !== data.id));
+            setChildPages(prev => {
+                const next: Record<string, PageItem[]> = {};
+                for (const key in prev) {
+                    next[key] = prev[key].filter(p => p.id !== data.id);
+                }
+                return next;
+            });
+            setFavorites(prev => prev.filter(fav => fav.page.id !== data.id));
+            // Redirect if viewing the deleted page
+            if (currentPageIdRef.current === data.id) {
+                router.push('/workspace');
+            }
+        };
+
+        const onFavoriteChanged = (data: { userId: string }) => {
+            // Only re-fetch favorites for the current user
+            if (data.userId === currentUserIdRef.current) {
+                fetchFavorites();
+            }
+        };
+
+        const onClientChanged = () => {
+            fetchClients();
+        };
+
+        socket.on('page-created', onPageCreated);
+        socket.on('page-updated', onPageUpdated);
+        socket.on('page-deleted', onPageDeleted);
+        socket.on('favorite-changed', onFavoriteChanged);
+        socket.on('client-changed', onClientChanged);
+
+        return () => {
+            socket.off('page-created', onPageCreated);
+            socket.off('page-updated', onPageUpdated);
+            socket.off('page-deleted', onPageDeleted);
+            socket.off('favorite-changed', onFavoriteChanged);
+            socket.off('client-changed', onClientChanged);
+        };
+    }, [socket, fetchFavorites, fetchClients, router]);
+    // ── End real-time ──────────────────────────────────────────────────────────
+
 
     // Close page menu on click outside
     useEffect(() => {

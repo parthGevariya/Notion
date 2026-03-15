@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { pushAppEvent } from '@/lib/pushEvent';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -92,6 +93,9 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
                 },
             },
         });
+
+        // Broadcast new row to all users viewing this client's calendar
+        pushAppEvent('calendar-row-created', { clientId, row: newRow });
 
         return NextResponse.json(newRow, { status: 201 });
     } catch (e: any) {

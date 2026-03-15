@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { pushAppEvent } from '@/lib/pushEvent';
 
 type RouteParams = { params: Promise<{ id: string, rowId: string }> };
 
@@ -54,6 +55,8 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
             },
         });
 
+        pushAppEvent('calendar-row-updated', { clientId, row: updatedRow });
+
         return NextResponse.json(updatedRow);
     } catch (error) {
         console.error('Error updating calendar row:', error);
@@ -74,6 +77,8 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
         });
 
         // Optional: Re-sequence positions here if needed, but flex-ordering is usually fine.
+
+        pushAppEvent('calendar-row-deleted', { clientId, rowId });
 
         return NextResponse.json({ success: true });
     } catch (error) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/db';
+import { pushAppEvent } from '@/lib/pushEvent';
 
 // GET /api/favorites
 export async function GET() {
@@ -46,6 +47,7 @@ export async function POST(req: NextRequest) {
 
         if (existing) {
             await prisma.favorite.delete({ where: { id: existing.id } });
+            pushAppEvent('favorite-changed', { userId });
             return NextResponse.json({ favorited: false });
         }
 
@@ -62,6 +64,7 @@ export async function POST(req: NextRequest) {
             },
         });
 
+        pushAppEvent('favorite-changed', { userId });
         return NextResponse.json({ favorited: true });
     } catch (error) {
         console.error('POST /api/favorites error:', error);
